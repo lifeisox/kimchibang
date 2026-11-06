@@ -1,0 +1,7 @@
+const {chromium}=require('playwright');const fs=require('fs');const root=require('path').resolve(__dirname,'..');
+(async()=>{const b=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});try{const p=await b.newPage({viewport:{width:1440,height:1000}});let errors=[];p.on('pageerror',e=>errors.push(e.message));
+await p.goto('http://127.0.0.1:8080');await p.getByLabel('아이디',{exact:true}).fill('admin');await p.getByLabel('비밀번호',{exact:true}).fill(fs.readFileSync(root+'/.local/admin-password.txt','utf8').trim());await p.getByRole('button',{name:'로그인하기',exact:true}).click();
+for(const kind of ['week','month','year']){const r=await p.goto('http://127.0.0.1:8080/?page=sales&period='+kind+'&date=2025-02-03');if(r.status()!==200)throw Error('Status');await p.getByRole('heading',{name:'전년도와 비교하기',exact:true}).waitFor();if((await p.locator('main').textContent()).includes('화면을 불러오지 못했습니다'))throw Error('Render');}
+await p.setViewportSize({width:390,height:844});if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Mobile overflow');
+await p.goto('http://127.0.0.1:8080/?page=sales&period=month&date=2026-02-30');await p.getByText('날짜를 확인해 주세요.',{exact:true}).waitFor();if(errors.length)throw Error('JS errors');console.log('PASS 판매 통계 주간·월간·연간·전년 비교·모바일·날짜 검사 (읽기 전용)');
+}finally{await b.close();}})().catch(e=>{console.error(e);process.exit(1)});

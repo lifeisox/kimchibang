@@ -1,0 +1,30 @@
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: kimchibang
+      MYSQL_USER: kimchi
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Run scripts/configure.py first}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Run scripts/configure.py first}
+    volumes:
+      - ./.local/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  web:
+    build: .
+    environment:
+      DB_HOST: db
+      DB_NAME: kimchibang
+      DB_USER: kimchi
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_SECURE_COOKIE: "0"
+    ports:
+      - "127.0.0.1:8080:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy

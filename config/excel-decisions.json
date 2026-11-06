@@ -1,0 +1,106 @@
+{
+  "revision": "2026-11-06-reviewed-1",
+  "source_sha256": "b5c4f23656fc93d01b2a2baae10a7dcac0b153997dfa8ccf9bb770b741b9dd28",
+  "corrections": {
+    "24!52": {
+      "column": "O",
+      "quantity": 1,
+      "zero_misc": true,
+      "expected_total_cents": 2500,
+      "reason": "사용자 정정: 제품 수량 1개, 기타 수량 0개, 최종 금액 $25"
+    }
+  },
+  "delivery_fee_candidate_cents": 500,
+  "product_revision": "2026-11-06-products-2",
+  "historical_products": {
+    "24!N": {
+      "key": "yeolmu-3200",
+      "family_code": "열",
+      "name": "열무김치",
+      "weight_g": 3200,
+      "reason": "사용자 확인: 같은 열무김치 3.2kg이며 당시 $20 단가를 보존합니다."
+    },
+    "24!O": {
+      "key": "yeolmu-3200",
+      "family_code": "열",
+      "name": "열무김치",
+      "weight_g": 3200,
+      "reason": "사용자 확인: 같은 열무김치 3.2kg이며 인상된 당시 $25 단가를 보존합니다."
+    },
+    "24!V": {
+      "key": "mat-5000",
+      "family_code": "맛5",
+      "name": "맛김치",
+      "weight_g": 5000,
+      "reason": "사용자 확인: 과거 맛김치는 5kg입니다. 당시 단가를 보존합니다."
+    },
+    "24!P": {
+      "key": "oi-unknown-2024",
+      "family_code": null,
+      "name": "오이김치",
+      "weight_g": null,
+      "reason": "사용자 확인: 오이김치이며 과거 용량은 미확인입니다. 현재 판매 제품에 추가하지 않습니다."
+    },
+    "24!K": {
+      "key": "white-cabbage-5000",
+      "family_code": "포백5",
+      "name": "백포기김치",
+      "weight_g": 5000,
+      "reason": "사용자 확인: 백포기김치 5kg입니다. 각 연도 당시 단가는 보존하고 현재 판매 목록에도 등록합니다."
+    },
+    "25!K": {
+      "key": "white-cabbage-5000",
+      "family_code": "포백5",
+      "name": "백포기김치",
+      "weight_g": 5000,
+      "reason": "사용자 확인: 백포기김치 5kg입니다. 각 연도 당시 단가는 보존하고 현재 판매 목록에도 등록합니다."
+    },
+    "26!K": {
+      "key": "white-cabbage-5000",
+      "family_code": "포백5",
+      "name": "백포기김치",
+      "weight_g": 5000,
+      "reason": "사용자 확인: 백포기김치 5kg입니다. 각 연도 당시 단가는 보존하고 현재 판매 목록에도 등록합니다."
+    }
+  },
+  "user_revision": "2026-11-06-customer-settlement-2",
+  "customer_rules": {
+    "11": {
+      "kind": "person",
+      "nickname_prefix": "대사관"
+    },
+    "27": {
+      "kind": "person",
+      "nickname_prefix": "대사관"
+    },
+    "159": {
+      "kind": "person",
+      "nickname_prefix": "대사관"
+    },
+    "35": {
+      "kind": "organization",
+      "name": "대사관",
+      "nickname": "대사관(단체)",
+      "contact_from": "nickname"
+    }
+  },
+  "confirmed_order_customers": {
+    "26!308": "고객명단!35"
+  },
+  "excluded_orders": [
+    "25!281",
+    "25!323"
+  ],
+  "confirmed_date_orders": [
+    "25!346",
+    "25!347"
+  ],
+  "adjustment_classification": {
+    "100": "consented_extra_income",
+    "300": "consented_extra_income",
+    "1000": "consented_extra_income",
+    "1800": "consented_extra_income",
+    "4000": "other_sales",
+    "7000": "other_sales"
+  }
+}

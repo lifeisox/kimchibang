@@ -1,0 +1,11 @@
+services:
+  db:
+    volumes:
+      - kimchi-preview-db:/var/lib/mysql
+  web:
+    environment:
+      APP_SECURE_COOKIE: "1"
+      APP_ALLOW_INITIAL_SETUP: "1"
+    command: ["php", "-S", "0.0.0.0:8000", "-t", "public"]
+volumes:
+  kimchi-preview-db:

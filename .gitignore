@@ -1,0 +1,6 @@
+.env
+.local/
+/backups/
+
+__pycache__/
+*.pyc
