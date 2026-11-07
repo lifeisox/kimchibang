@@ -90,8 +90,8 @@ function workflowAction(string $action): int {
             }
             $date=validDate(textfield($_POST,'delivery_date',10,true));
             if($date<$o['order_date']) throw new InvalidArgumentException('예정일은 주문일 이후로 선택해 주세요.');
-            $notes=textfield($_POST,'notes',2000);
-            $method=textfield($_POST,'fulfillment',10,true);if(!in_array($method,['delivery','pickup'],true)) throw new InvalidArgumentException('받는 방법을 선택해 주세요.');
+            $notes=textfield($_POST,'notes',15000);
+            $method=textfield($_POST,'fulfillment',10,true);if(!in_array($method,['delivery','pickup','church'],true)) throw new InvalidArgumentException('받는 방법을 선택해 주세요.');
             $address=textfield($_POST,'delivery_address',500);if($method==='delivery' && $address==='') throw new InvalidArgumentException('배달 주소를 입력해 주세요.');
             $discount=cents($_POST['discount']??'0');
             if($before['shipped'] || $before['received']) {

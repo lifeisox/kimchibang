@@ -175,3 +175,12 @@ NODE_PATH="$PWD/.local/browser/node_modules" node tests/browser-preview.cjs
 검증: `python tests/sales.py` (별도 시험 DB), `NODE_PATH=/workspace/browser-check/node_modules node tests/browser-sales.cjs` (읽기 전용 브라우저).
 
 사용자 요청으로 최신 엑셀 비교 기능은 취소했습니다. 이후 소량의 추가 자료는 고객 등록·새 주문에서 입력합니다.
+
+
+## 고객 기본값과 생산·재료 계산
+
+[사용 안내 및 Codespaces 업데이트](docs/CUSTOMER_PRODUCTION.md)를 참고하세요. 이름 이외 고객 항목은 선택 사항이며, 지역 목록과 배달·픽업·교회 기본 수령 방법을 제공합니다. 고객 선택 시 수령 방법과 고객 메모를 새 주문에 복사하며 수정할 수 있습니다. 교회는 배달비가 없습니다. 전달 수량은 남은 수량을 기본값으로 표시합니다.
+
+생산 화면은 체크한 주문의 전달 대기 수량과 선택 입력한 소매점 kg 물량으로 배추·무 소요량을 계산합니다. 배합·용량이 없으면 0으로 추정하지 않고 계산 가능한 부분만 표시합니다. 생산 완료 처리·재고 관리·소금·양념 계산과 도로 기준 배달 최적화는 아직 포함하지 않습니다. 유료 API는 사용하지 않습니다.
+
+검증: `python tests/production.py`, `NODE_PATH=/workspace/browser-check/node_modules node tests/browser-preferences.cjs`.

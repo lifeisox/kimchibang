@@ -25,6 +25,7 @@ const root=require('path').resolve(__dirname,'..');
  await page.getByRole('button',{name:'주문 저장하기'}).click();
  await page.waitForURL(/page=order&/);const orderUrl=page.url();
  await page.getByLabel('포5 · 포기김치 (대기 1개)',{exact:true}).fill('1');
+ await page.getByLabel('깍 · 깍두기 (대기 1개)',{exact:true}).fill('0');
  await page.getByRole('button',{name:'선택 수량 전달 완료'}).click();
  await page.getByLabel('실제로 받은 금액 ($)',{exact:true}).fill('50');
  if(await page.getByLabel('이번 입금자 성명 (선택)',{exact:true}).inputValue()!=='')throw Error('Payer auto guessed');

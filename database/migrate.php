@@ -69,3 +69,11 @@ if(!query('SELECT version FROM schema_migrations WHERE version=?',[$version])->f
     // Existing notes/nicknames are not unambiguously payer names; preserve them without guessing.
     query('INSERT INTO schema_migrations (version) VALUES (?)',[$version]);
 }
+
+
+$version='20261107_customer_preferences';
+if(!query('SELECT version FROM schema_migrations WHERE version=?',[$version])->fetch()) {
+    $exists=query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='customers' AND COLUMN_NAME='preferred_fulfillment'")->fetchColumn();
+    if(!$exists)db()->exec("ALTER TABLE customers ADD COLUMN preferred_fulfillment VARCHAR(20) NOT NULL DEFAULT ''");
+    query('INSERT INTO schema_migrations (version) VALUES (?)',[$version]);
+}

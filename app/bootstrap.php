@@ -62,3 +62,11 @@ function payerName(array $data,string $key='payer_name'): string {
 function customerSearchCondition(): string {
     return "name LIKE ? ESCAPE '!' OR nickname LIKE ? ESCAPE '!' OR phone LIKE ? ESCAPE '!' OR address LIKE ? ESCAPE '!' OR contact_name LIKE ? ESCAPE '!' OR affiliation LIKE ? ESCAPE '!' OR payer_name LIKE ? ESCAPE '!' OR EXISTS (SELECT 1 FROM orders search_o JOIN payments search_p ON search_p.order_id=search_o.id WHERE search_o.customer_id=customers.id AND search_p.payer_name<>'' AND search_p.payer_name LIKE ? ESCAPE '!')";
 }
+
+const CUSTOMER_AREAS = ['Barrhaven','Kanata','Stittsville','Nepean','Carlington','Downtown','Vanier','Findlay','East','Etc'];
+const FULFILLMENT_METHODS = ['delivery'=>'집으로 배달','pickup'=>'직접 픽업','church'=>'교회'];
+function fulfillmentLabel(string $method): string {return FULFILLMENT_METHODS[$method]??'미기록';}
+function optionalChoice(array $data,string $field,array $allowed): string {
+    $v=textfield($data,$field,30);
+    if($v!=='' && !in_array($v,$allowed,true))throw new InvalidArgumentException('선택 항목을 확인해 주세요.');return $v;
+}

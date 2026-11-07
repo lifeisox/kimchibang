@@ -31,7 +31,7 @@ if (form) {
     discount.setCustomValidity(netProducts < 0 ? '할인액은 제품 합계를 넘을 수 없습니다.' : '');
     document.querySelector('#delivery-fee').textContent = formatMoney(fee);
     document.querySelector('#total').textContent = formatMoney(Math.max(0, netProducts) + fee);
-    document.querySelector('#delivery-fee-hint').textContent = !delivery ? '직접 픽업은 배달비가 없습니다.' : !hasItems ? '배달은 할인 전 제품 금액 $80 미만이면 $5, 픽업은 무료입니다.' : fee ? '할인 전 제품 금액이 $80 미만이므로 배달비 $5가 포함됩니다.' : netProducts < 0 ? '할인액을 확인해 주세요.' : '할인 전 제품 금액이 $80 이상이므로 무료 배달입니다.';
+    document.querySelector('#delivery-fee-hint').textContent = !delivery ? '직접 픽업·교회 수령은 배달비가 없습니다.' : !hasItems ? '배달은 할인 전 제품 금액 $80 미만이면 $5, 픽업·교회 수령은 무료입니다.' : fee ? '할인 전 제품 금액이 $80 미만이므로 배달비 $5가 포함됩니다.' : netProducts < 0 ? '할인액을 확인해 주세요.' : '할인 전 제품 금액이 $80 이상이므로 무료 배달입니다.';
   }
   cards.forEach(card => {
     const input = card.querySelector('input');
@@ -66,6 +66,10 @@ if (form) {
             const title=document.createElement('strong'); title.textContent=c.name+(c.nickname?' · '+c.nickname:'');
             const address=document.createElement('p'); address.textContent=c.address; selected.append(title,address);
             document.querySelector('#delivery-address').value=c.address;
+            const method=Object.hasOwn({delivery:1,pickup:1,church:1},c.preferred_fulfillment)?c.preferred_fulfillment:'delivery';
+            form.querySelector('[name=fulfillment][value="'+method+'"]').checked=true;
+            form.querySelector('textarea[name=notes]').value=c.notes||'';
+            updateMethod();
             search.value=''; results.replaceChildren();
           });
           results.append(button);
@@ -100,3 +104,6 @@ if(reviewForm){
  document.querySelector('#review-select-none').addEventListener('click',()=>{checks.forEach(c=>c.checked=false);update();});
  reviewForm.addEventListener('submit',e=>{if(!checks.some(c=>c.checked)){e.preventDefault();window.alert('처리할 그룹을 하나 이상 선택해 주세요.');}});
 }
+
+const productionSelect=document.querySelector('#production-select-all');
+productionSelect?.addEventListener('click',()=>{const boxes=[...document.querySelectorAll('#production-form input[name="order_ids[]"]')];const select=boxes.some(b=>!b.checked);boxes.forEach(b=>b.checked=select);});

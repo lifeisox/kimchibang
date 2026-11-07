@@ -54,11 +54,11 @@ function handleAction(): never {
     }
     databaseWriteLock();
     if($action==='customer') {
-        $kind=$_POST['customer_kind']??'person';if(!in_array($kind,['person','organization'],true))throw new InvalidArgumentException('고객 종류를 확인해 주세요.');
-        $values=[textfield($_POST,'name',100,true),textfield($_POST,'nickname'),textfield($_POST,'phone',50),textfield($_POST,'address',500),textfield($_POST,'area'),textfield($_POST,'notes',15000),$kind,textfield($_POST,'affiliation',100),textfield($_POST,'contact_name',100),payerName($_POST)];
+        $kind=$_POST['customer_kind']??'';if(!in_array($kind,['','person','organization'],true))throw new InvalidArgumentException('고객 종류를 확인해 주세요.');
+        $values=[textfield($_POST,'name',100,true),textfield($_POST,'nickname'),textfield($_POST,'phone',50),textfield($_POST,'address',500),textfield($_POST,'area'),textfield($_POST,'notes',15000),$kind,textfield($_POST,'affiliation',100),textfield($_POST,'contact_name',100),payerName($_POST),optionalChoice($_POST,'preferred_fulfillment',array_keys(FULFILLMENT_METHODS))];
         if((int)($_POST['id']??0)>0) {
-            $id=(int)$_POST['id']; query('UPDATE customers SET name=?,nickname=?,phone=?,address=?,area=?,notes=?,customer_kind=?,affiliation=?,contact_name=?,payer_name=? WHERE id=?',[...$values,$id]);
-        } else { query('INSERT INTO customers (name,nickname,phone,address,area,notes,customer_kind,affiliation,contact_name,payer_name) VALUES (?,?,?,?,?,?,?,?,?,?)',$values); $id=(int)db()->lastInsertId(); }
+            $id=(int)$_POST['id']; query('UPDATE customers SET name=?,nickname=?,phone=?,address=?,area=?,notes=?,customer_kind=?,affiliation=?,contact_name=?,payer_name=?,preferred_fulfillment=? WHERE id=?',[...$values,$id]);
+        } else { query('INSERT INTO customers (name,nickname,phone,address,area,notes,customer_kind,affiliation,contact_name,payer_name,preferred_fulfillment) VALUES (?,?,?,?,?,?,?,?,?,?,?)',$values); $id=(int)db()->lastInsertId(); }
         $_SESSION['flash']='고객 정보를 저장했습니다.'; redirect('/?page=customer&id='.$id);
     }
     if($action==='product') {
@@ -83,10 +83,10 @@ function handleAction(): never {
         $orderDate=validDate(textfield($_POST,'order_date',10,true)); $deliveryDate=validDate(textfield($_POST,'delivery_date',10,true));
         if($deliveryDate<$orderDate) throw new InvalidArgumentException('배달·픽업일은 주문일 이후로 선택해 주세요.');
         $method=$_POST['fulfillment']??'';
-        if(!in_array($method,['delivery','pickup'],true)) throw new InvalidArgumentException('배달 또는 픽업을 선택해 주세요.');
+        if(!in_array($method,['delivery','pickup','church'],true)) throw new InvalidArgumentException('집으로 배달·직접 픽업·교회 중에서 선택해 주세요.');
         $address=textfield($_POST,'delivery_address',500);
         if($method==='delivery' && $address==='') throw new InvalidArgumentException('배달 주소를 입력해 주세요.');
-        $notes=textfield($_POST,'notes',2000); $discount=cents($_POST['discount']??'0');
+        $notes=textfield($_POST,'notes',15000); $discount=cents($_POST['discount']??'0');
         $quantities=$_POST['qty']??[];
         if(!is_array($quantities)) throw new InvalidArgumentException('제품 수량을 확인해 주세요.');
         $items=[]; $subtotal=0;
