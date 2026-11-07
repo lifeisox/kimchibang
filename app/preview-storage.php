@@ -28,6 +28,15 @@ function currentExcelPreview(bool $withReview=true): ?array {
     if(!is_file($file) || filesize($file)>20*1024*1024) return null;
     $data=json_decode(file_get_contents($file),true,512,JSON_THROW_ON_ERROR);
     if(($data['schema']??null)!==1)return null;
+    if(($data['customer_preferences_schema']??0)<1) {
+        $source=previewDirectory().'/source-'.$data['sha256'].'.zip';
+        if(!is_file($source))$source=previewDirectory().'/attached-source.zip';
+        if(is_file($source)&&hash_file('sha256',$source)===$data['sha256']) {
+            $data=buildExcelPreview($source,$data['filename'],previewSnapshot());saveExcelPreview($data,$file);
+            $data=json_decode(file_get_contents($file),true,512,JSON_THROW_ON_ERROR);
+        }
+    }
+
     $report=applyApprovedImportRules(resolveKnownImportDuplicates(applyExcelDecisions($data)));return $withReview?applyApprovedImportRules(applyPreviewReview($report)):$report;
 }
 function previewUploadAction(): never {
@@ -41,7 +50,7 @@ function previewUploadAction(): never {
     $id=bin2hex(random_bytes(16));$zip=$dir.'/'.$id.'.zip';
     if(!move_uploaded_file($upload['tmp_name'],$zip)) throw new RuntimeException('업로드 파일을 준비할 수 없습니다.');
     chmod($zip,0600);
-    try {$report=buildExcelPreview($zip,$filename,previewSnapshot());saveExcelPreview($report,$dir.'/'.$id.'.json');}
+    try {$report=buildExcelPreview($zip,$filename,previewSnapshot());saveExcelPreview($report,$dir.'/'.$id.'.json');$original=$dir.'/source-'.$report['sha256'].'.zip';if(!is_file($original)&&!rename($zip,$original))throw new RuntimeException('원본 파일을 비공개 경로에 보관하지 못했습니다.');}
     finally {if(is_file($zip)) unlink($zip);}
     $previous=$_SESSION['excel_preview']??'';
     if(is_string($previous) && preg_match('/^[a-f0-9]{32}$/D',$previous) && is_file($dir.'/'.$previous.'.json')) unlink($dir.'/'.$previous.'.json');

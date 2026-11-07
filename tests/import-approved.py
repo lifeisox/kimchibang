@@ -53,7 +53,7 @@ try:
  status,html,url=req('/?page=excel-preview',{'action':'import_prepare','csrf':csrf})
  check(status==200 and '새 고객 193명' in html and '새 주문 946건' in html and '$262.00' in html,'실제 준비 화면과 분류 합계')
  token=re.search(r'name="job" value="([a-f0-9]+)"',html)[1]
- status,html,url=req('/?page=excel-preview',{'action':'import_execute','csrf':csrf,'job':token,'confirm_import':'yes'})
+ status,html,url=req('/?page=excel-preview',{'action':'import_execute','csrf':csrf,'job':token,'confirm_import':'yes','confirm_replace':'replace'})
  check(status==200 and '엑셀 가져오기 완료' in html,'HTTP 실제 가져오기 완료')
  check(not re.search(r'<a[^>]+href="/\?page=excel-preview"',html),'완료 후 사이드바 가져오기 메뉴 숨김')
  check(req('/?page=excel-preview',{'action':'import_prepare','csrf':csrf})[0]==422,'완료 후 재가져오기 요청 차단')

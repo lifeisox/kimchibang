@@ -39,12 +39,13 @@ function handleAction(): never {
         require_once __DIR__.'/excel-import.php';
         if($action==='import_prepare') {
             $report=currentExcelPreview();if(!$report)throw new InvalidArgumentException('먼저 엑셀 미리보기를 만들어 주세요.');
-            $token=saveImportJob(buildImportPlan($report),(int)$_SESSION['user_id']);
+            $token=saveImportJob(buildImportPlan($report,true),(int)$_SESSION['user_id']);
             redirect('/?page=excel-preview&tab=import&job='.$token);
         }
-        if(($_POST['confirm_import']??'')!=='yes')throw new InvalidArgumentException('실제 저장 확인란을 선택해 주세요.');
+        if(($_POST['confirm_import']??'')!=='yes'||($_POST['confirm_replace']??'')!=='replace')throw new InvalidArgumentException('기존 업무자료 삭제와 새 자료 저장 확인란을 모두 선택해 주세요.');
         $ownedLock=databaseWriteLock();
         $token=textfield($_POST,'job',48,true);$plan=loadImportJob($token,(int)$_SESSION['user_id']);
+        if(($plan['mode']??'')!=='replace')throw new InvalidArgumentException('초기화 가져오기 방식으로 저장할 내용을 다시 확인해 주세요.');
         $current=currentExcelPreview();
         if(!$current || $current['sha256']!==$plan['source_sha'] || $current['review_version']!==$plan['review_version'])throw new InvalidArgumentException('검토 기준이 바뀌었습니다. 가져오기를 다시 준비해 주세요.');
         $policy=[$current['decision_revision']??null,$current['product_decision_revision']??null,$current['user_decision_revision']??null,$current['import_rules_revision']??null];
@@ -54,6 +55,7 @@ function handleAction(): never {
         redirect('/?page=excel-preview&tab=import');
     }
     databaseWriteLock();
+    if(in_array($action,['account_create','account_password'],true)){require_once __DIR__.'/accounts.php';accountAction($action);}
     if($action==='brand_upload'){require_once __DIR__.'/branding.php';saveBrandLogo($_FILES['brand_file']??[]);$_SESSION['flash']='원본 브랜드 로고를 적용했습니다.';redirect('/?page=brand');}
     if($action==='customer') {
         $kind=$_POST['customer_kind']??'person';if(!in_array($kind,['person','organization'],true))throw new InvalidArgumentException('고객 종류를 확인해 주세요.');

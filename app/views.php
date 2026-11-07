@@ -1,6 +1,7 @@
 <?php
 function pv(string $key,string $default=''): string {return is_string($_POST[$key]??null)?$_POST[$key]:$default;}
-if($page==='brand'): require __DIR__.'/brand-page.php';
+if($page==='accounts'): require __DIR__.'/accounts-page.php';
+elseif($page==='brand'): require __DIR__.'/brand-page.php';
 elseif($page==='sales'): require __DIR__.'/sales-page.php';
 elseif($page==='excel-preview'): require __DIR__.'/preview-page.php';
 elseif($page==='home'):
@@ -40,7 +41,7 @@ elseif($page==='home'):
  $term=textfield($_GET,'q',100); $like='%'.strtr($term,['!'=>'!!','%'=>'!%','_'=>'!_']).'%';
  $rows=query("SELECT * FROM customers WHERE ".customerSearchCondition()." ORDER BY name LIMIT 100",array_fill(0,8,$like))->fetchAll();
 ?>
-<div class="toolbar"><form method="get" class="inline-form"><input type="hidden" name="page" value="customers"><input name="q" value="<?=e($term)?>" placeholder="이름, 닉네임, 전화번호, 주소, 입금자" aria-label="고객 검색"><button class="button secondary">고객 찾기</button></form><a href="/?page=customer-edit" class="button">＋ 고객 등록</a></div><section class="panel"><p class="muted">검색 결과는 최대 100명까지 표시합니다. 검색어를 입력하면 더 쉽게 찾을 수 있어요.</p><?php if(!$rows): ?><div class="empty"><h2>등록된 고객이 없습니다</h2><p>고객을 먼저 등록하면 주문할 때 바로 찾을 수 있어요.</p></div><?php else: ?><div class="table-wrap"><table><thead><tr><th>이름 / 닉네임</th><th>전화번호</th><th>지역·주소</th><th>주문</th></tr></thead><tbody><?php foreach($rows as $c): ?><tr><td><a href="/?page=customer&id=<?=(int)$c['id']?>"><?=e($c['name'])?></a><small><?=e($c['nickname'])?></small><?php if($c['payer_name']): ?><small>입금자: <?=e($c['payer_name'])?></small><?php endif ?></td><td><?=e($c['phone'])?></td><td><?=e($c['area'])?><small><?=e($c['address'])?></small></td><td><a class="button secondary" href="/?page=new-order&customer_id=<?=(int)$c['id']?>">주문 넣기</a></td></tr><?php endforeach ?></tbody></table></div><?php endif ?></section>
+<div class="toolbar"><form method="get" class="inline-form"><input type="hidden" name="page" value="customers"><input name="q" value="<?=e($term)?>" placeholder="이름, 닉네임, 전화번호, 주소, 입금자" aria-label="고객 검색"><button class="button secondary">고객 찾기</button></form><a href="/?page=customer-edit" class="button">＋ 고객 등록</a></div><section class="panel"><p class="muted">검색 결과는 최대 100명까지 표시합니다. 검색어를 입력하면 더 쉽게 찾을 수 있어요.</p><?php if(!$rows): ?><div class="empty"><h2>등록된 고객이 없습니다</h2><p>고객을 먼저 등록하면 주문할 때 바로 찾을 수 있어요.</p></div><?php else: ?><div class="table-wrap"><table><thead><tr><th>이름 / 닉네임</th><th>지역·주소</th><th>주문</th></tr></thead><tbody><?php foreach($rows as $c): ?><tr><td><a href="/?page=customer&id=<?=(int)$c['id']?>"><?=e($c['name'])?></a><small><?=e($c['nickname'])?></small><?php if($c['payer_name']): ?><small>입금자: <?=e($c['payer_name'])?></small><?php endif ?></td><td><?=e($c['area'])?><small><?=e($c['address'])?></small></td><td><a class="button secondary" href="/?page=new-order&customer_id=<?=(int)$c['id']?>">주문 넣기</a></td></tr><?php endforeach ?></tbody></table></div><?php endif ?></section>
 <?php elseif($page==='customer-edit'):
  $c=query('SELECT * FROM customers WHERE id=?',[(int)($_POST['id']??$_GET['id']??0)])->fetch()?:[];
 ?>

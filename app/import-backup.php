@@ -5,7 +5,7 @@ function importDatabaseIdentity(): string {
 }
 function importDatabaseDigest(): string {
     $context=hash_init('sha256');
-    foreach(['customers','products','orders','order_items','payments','payment_allocations','order_events','import_records'] as $table) {
+    foreach(['customers','products','orders','order_items','payments','payment_allocations','order_events','import_records','import_sources','import_batches','import_batch_rows'] as $table) {
         hash_update($context,$table);
         $s=query('SELECT * FROM `'.$table.'` ORDER BY id');while($r=$s->fetch())hash_update($context,json_encode($r,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
     }

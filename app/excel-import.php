@@ -12,7 +12,7 @@ function importAmount(mixed $v,string $ref): int {
 function normalizeImportCustomer(array $c): array {
     $ref=$c['ref'];$kind=$c['customer_kind']??'person';if(!in_array($kind,['person','organization'],true))throw new InvalidArgumentException($ref.'의 고객 종류를 확인해 주세요.');
     $name=$c['name']?:$c['display'];if(trim($name)==='')throw new InvalidArgumentException($ref.'의 이름이 없습니다.');
-    return ['name'=>importText($name,100,$ref),'nickname'=>importText($c['nickname'],100,$ref),'customer_kind'=>$kind,'affiliation'=>importText($c['affiliation']??'',100,$ref),'contact_name'=>importText($c['contact_name']??'',100,$ref),'phone'=>importText($c['phone'],50,$ref),'address'=>importText($c['address'],500,$ref),'area'=>importText($c['area'],100,$ref),'notes'=>importText($c['notes'],15000,$ref)];
+    return ['name'=>importText($name,100,$ref),'nickname'=>importText($c['nickname'],100,$ref),'customer_kind'=>$kind,'affiliation'=>importText($c['affiliation']??'',100,$ref),'contact_name'=>importText($c['contact_name']??'',100,$ref),'phone'=>importText($c['phone'],50,$ref),'address'=>importText($c['address'],500,$ref),'area'=>importText($c['area'],100,$ref),'notes'=>importText($c['notes'],15000,$ref),'preferred_fulfillment'=>importText($c['preferred_fulfillment']??'',20,$ref)];
 }
 function normalizeImportOrder(array $o,array $report): array {
     $ref=$o['ref'];$links=$o['customer_refs'];
@@ -42,10 +42,11 @@ function normalizeImportOrder(array $o,array $report): array {
 function importLedger(string $sha): array {
     $rows=query('SELECT r.* FROM import_records r JOIN import_sources s ON s.id=r.source_id WHERE s.source_sha=?',[$sha])->fetchAll();$map=[];foreach($rows as $r)$map[$r['entity_type'].':'.$r['source_ref']]=$r;return $map;
 }
-function buildImportPlan(array $report): array {
+function buildImportPlan(array $report,bool $replaceExisting=false): array {
     if(!isset($report['review_groups']) || !isset($report['review_version']))$report=applyPreviewReview($report);
     if($report['summary']['customer_review'] || $report['summary']['order_review'])throw new InvalidArgumentException('확인 대기 항목을 처리하거나 보류한 뒤 가져오기를 준비해 주세요.');
-    $ledger=importLedger($report['sha256']);$records=[];$counts=['new_customers'=>0,'new_orders'=>0,'skipped_customers'=>0,'skipped_orders'=>0,'excluded_orders'=>0,'held_customers'=>0,'held_orders'=>0,'kimchi_sales_cents'=>0,'delivery_fee_cents'=>0,'other_sales_cents'=>0,'other_charges_cents'=>0,'additional_income_cents'=>0,'income_total_cents'=>0,'order_total_cents'=>0];
+    if($replaceExisting && ($report['customer_preferences_schema']??0)<1)throw new InvalidArgumentException('H 배달여부를 읽기 위해 원본 엑셀을 다시 선택하고 파일 분석하기를 눌러 주세요.');
+    $ledger=$replaceExisting?[]:importLedger($report['sha256']);$records=[];$counts=['new_customers'=>0,'new_orders'=>0,'skipped_customers'=>0,'skipped_orders'=>0,'excluded_orders'=>0,'held_customers'=>0,'held_orders'=>0,'kimchi_sales_cents'=>0,'delivery_fee_cents'=>0,'other_sales_cents'=>0,'other_charges_cents'=>0,'additional_income_cents'=>0,'income_total_cents'=>0,'order_total_cents'=>0];
     foreach(['customers','orders'] as $kind)foreach($report[$kind] as $r) {
         $state=($r['preview_disposition']??'')==='exclude'?'excluded':((($r['review_disposition']??'')==='hold')?'held':'ready');
         $data=$state!=='ready'?null:($kind==='customers'?normalizeImportCustomer($r):normalizeImportOrder($r,$report));
@@ -64,11 +65,17 @@ function buildImportPlan(array $report): array {
     }
     // Never silently merge a different source's customer with the same name or nickname.
     $sourceTargets=array_column(array_filter($ledger,fn($r)=>$r['entity_type']==='customers'&&$r['state']==='imported'),'target_id');
-    foreach($records as $r)if($r['kind']==='customers' && $r['operation']==='insert') {
+    foreach($records as $r)if(!$replaceExisting && $r['kind']==='customers' && $r['operation']==='insert') {
         $c=$r['data'];$candidates=query("SELECT id FROM customers WHERE name=? OR name=? OR (nickname<>'' AND (nickname=? OR nickname=?))",[$c['name'],$c['nickname'],$c['name'],$c['nickname']])->fetchAll(PDO::FETCH_COLUMN);
         if(array_diff($candidates,$sourceTargets))throw new InvalidArgumentException($r['ref'].'과 같은 이름의 등록 고객이 있습니다.엑셀을 다시 분석해 중복 여부를 확인해 주세요.');
     }
     $plan=['schema'=>1,'source_sha'=>$report['sha256'],'filename'=>$report['filename'],'database_identity'=>importDatabaseIdentity(),'database_digest'=>importDatabaseDigest(),'review_version'=>$report['review_version'],'policy'=>[$report['decision_revision']??null,$report['product_decision_revision']??null,$report['user_decision_revision']??null,$report['import_rules_revision']??null],'records'=>$records,'counts'=>$counts];
+    $plan['mode']=$replaceExisting?'replace':'append';
+    if($replaceExisting) {
+        if(!$counts['new_customers']||!$counts['new_orders']||$counts['held_customers']||$counts['held_orders'])throw new InvalidArgumentException('초기화 가져오기는 고객·주문이 있고 확인·보류가 모두 끝난 자료만 실행할 수 있습니다.');
+        $plan['delete_counts']=[];
+        foreach(importReplacementTables() as $table)$plan['delete_counts'][$table]=(int)query('SELECT COUNT(*) FROM `'.$table.'`')->fetchColumn();
+    }
     $plan['plan_sha']=importHash($plan);return $plan;
 }
 function importProduct(array $i): int {
@@ -103,7 +110,13 @@ function insertImportedOrder(array $o,int $customerId,int $batchId,int $actor,st
     return $id;
 }
 
+function importReplacementTables(): array {
+    // Child-first DELETE keeps foreign keys active and allows full rollback. Never TRUNCATE.
+    return ['payment_allocations','payments','order_events','order_items','orders','customers','import_batch_rows','import_records','import_batches','import_sources'];
+}
+
 function executeImportPlan(array $plan,int $actor): int {
+    if(!in_array($plan['mode']??'',['append','replace'],true))throw new InvalidArgumentException('가져오기 방식을 다시 준비해 주세요.');
     $copy=$plan;unset($copy['plan_sha']);
     if(!hash_equals(importHash($copy),$plan['plan_sha']) || !hash_equals(importDatabaseIdentity(),$plan['database_identity']))throw new InvalidArgumentException('가져오기 준비 자료를 다시 만들어 주세요.');
     $locked=databaseWriteLock();
@@ -113,13 +126,14 @@ function executeImportPlan(array $plan,int $actor): int {
         if(!hash_equals(importDatabaseDigest(),$plan['database_digest']))throw new InvalidArgumentException('준비 이후 자료가 변경되었습니다. 가져오기를 다시 준비해 주세요.');
         $backup=writeImportBackup();
         db()->beginTransaction();
+        if(($plan['mode']??'append')==='replace')foreach(importReplacementTables() as $table)query('DELETE FROM `'.$table.'`');
         query('INSERT INTO import_sources (source_sha,filename) VALUES (?,?) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)',[$plan['source_sha'],$plan['filename']]);$source=(int)db()->lastInsertId();
         query('INSERT INTO import_batches (source_id,plan_sha,backup_name,backup_sha,summary,created_by) VALUES (?,?,?,?,?,?)',[$source,$plan['plan_sha'],$backup['name'],$backup['sha256'],json_encode($plan['counts'],JSON_THROW_ON_ERROR),$actor]);$batch=(int)db()->lastInsertId();$customers=[];
         foreach($plan['records'] as $r) {
             $target=$r['old_target'];$state=$r['state'];
             if($r['operation']==='insert') {
                 if($r['kind']==='customers') {
-                    $c=$r['data'];query('INSERT INTO customers (name,nickname,customer_kind,affiliation,contact_name,phone,address,area,notes) VALUES (?,?,?,?,?,?,?,?,?)',array_values($c));$target=(int)db()->lastInsertId();
+                    $c=$r['data'];query('INSERT INTO customers (name,nickname,customer_kind,affiliation,contact_name,phone,address,area,notes,preferred_fulfillment) VALUES (?,?,?,?,?,?,?,?,?,?)',array_values($c));$target=(int)db()->lastInsertId();
                 } else {
                     if(!isset($customers[$r['data']['customer_ref']]))throw new InvalidArgumentException('주문에 연결할 고객이 없습니다.');
                     $target=insertImportedOrder($r['data'],$customers[$r['data']['customer_ref']],$batch,$actor,$plan['source_sha'],$r['ref']);

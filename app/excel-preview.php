@@ -115,7 +115,7 @@ function previewSnapshot(): array {
 }
 function buildExcelPreview(string $path,string $filename,array $snapshot): array {
     $book=new PreviewXlsx($path);
-    $report=['schema'=>1,'filename'=>basename($filename),'sha256'=>hash_file('sha256',$path),'generated_at'=>date(DATE_ATOM),'customers'=>[],'orders'=>[],'products'=>[],'ignored_sheets'=>[],'year_summary'=>[],'issue_counts'=>[],'notes'=>[]];
+    $report=['schema'=>1,'customer_preferences_schema'=>1,'filename'=>basename($filename),'sha256'=>hash_file('sha256',$path),'generated_at'=>date(DATE_ATOM),'customers'=>[],'orders'=>[],'products'=>[],'ignored_sheets'=>[],'year_summary'=>[],'issue_counts'=>[],'notes'=>[]];
     $customerIndex=[];$existingIndex=[];$products=[];$existingOrders=[];
     foreach($snapshot['products'] as $p) $products[$p['code']]=$p;
     foreach($snapshot['customers'] as $c) {
@@ -130,7 +130,7 @@ function buildExcelPreview(string $path,string $filename,array $snapshot): array
             $name=previewText(previewValue($row,$headers['성명']));$nick=previewText(previewValue($row,$headers['아이디']));
             if($name==='' && $nick==='') continue;
             $display=previewText(previewValue($row,$headers['표기성명']));
-            $record=['ref'=>'고객명단!'.$r,'sheet'=>'고객명단','row'=>$r,'name'=>$name,'nickname'=>$nick,'display'=>$display?:($name?:$nick),'phone'=>previewText(previewValue($row,$headers['전화번호']??$headers['연락처']??0)),'area'=>previewText(previewValue($row,$headers['지역']??0)),'address'=>previewText(previewValue($row,$headers['주소'])),'notes'=>previewText(previewValue($row,$headers['비고']??0)),'existing_candidates'=>[],'issues'=>[]];
+            $record=['ref'=>'고객명단!'.$r,'sheet'=>'고객명단','row'=>$r,'name'=>$name,'nickname'=>$nick,'display'=>$display?:($name?:$nick),'phone'=>previewText(previewValue($row,$headers['전화번호']??$headers['연락처']??0)),'area'=>previewText(previewValue($row,$headers['지역']??0)),'source_area'=>previewText(previewValue($row,$headers['지역']??0)),'delivery_preference_raw'=>previewText(previewValue($row,$headers['배달여부']??$headers['배달 여부']??8)),'address'=>previewText(previewValue($row,$headers['주소'])),'notes'=>previewText(previewValue($row,$headers['비고']??0)),'existing_candidates'=>[],'issues'=>[]];
             if($name==='') previewIssue($record,'customer_name_missing','실명이 비어 있어 닉네임을 표시했습니다. 이름 확인이 필요합니다.');
             if($record['address']==='') previewIssue($record,'customer_address_missing','주소가 없습니다. 픽업 고객인지 확인해 주세요.');
             $aliases=array_unique([$name,$nick,$record['display']]);$matches=[];

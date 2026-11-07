@@ -1,11 +1,15 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/customer-import.php';
 /** User-approved import rules. Raw snapshots and workbook cells are retained unchanged. */
 function applyApprovedImportRules(array $report): array {
-    $handled=['delivery_fee_candidate','negative_discount','other_negative_adjustment','overpayment_settlement','unknown_historical_weight','unregistered_product','ambiguous_product','sheet_year_mismatch','duplicate_customer','customer_address_missing'];
+    $handled=['delivery_fee_candidate','negative_discount','other_negative_adjustment','overpayment_settlement','unknown_historical_weight','unregistered_product','ambiguous_product','sheet_year_mismatch','duplicate_customer','customer_address_missing','existing_customer','existing_order'];
     $names=[];$aliases=[];$catalog=[];
     foreach($report['products'] as $p)if($p['current_product'])$catalog[$p['current_product']['code']]=$p['current_product'];
     foreach($report['customers'] as $ref=>&$c) {
+        $c['source_area']??=$c['area'];
+        $region=importedCustomerArea($c['address'],$c['source_area']);$c['area']=$region['area'];$c['area_classification_basis']=$region['basis'];
+        $c['preferred_fulfillment']=importedCustomerMethod($c);
         $original=$c['original_customer_fields']??['name'=>$c['name'],'nickname'=>$c['nickname'],'display'=>$c['display']];$c['original_customer_fields']=$original;
         if(str_contains($original['name'],'대사관')) {
             $c['customer_kind']='organization';$c['name']=$original['name'];$c['contact_name']=$original['nickname'];$c['nickname']=$original['name'].'(단체)';$c['display']=$c['name'];
@@ -13,7 +17,7 @@ function applyApprovedImportRules(array $report): array {
             $c['customer_kind']='person';
             if(str_contains($original['nickname'],'대사관')||($c['affiliation']??'')==='대사관'){$c['affiliation']='대사관';$c['nickname']='대사관 '.$c['name'];}
         }
-        foreach(['duplicate_customer','customer_address_missing'] as $code)unset($c['issues'][$code]);
+        foreach(['duplicate_customer','customer_address_missing','existing_customer','existing_order'] as $code)unset($c['issues'][$code]);
         if(previewKey($c['name'])!=='')$names[previewKey($c['name'])][$ref]=true;
         foreach(array_unique([$c['name'],$c['nickname'],$c['display'],$c['contact_name']??'',...array_values($original)]) as $alias)if(previewKey($alias)!=='')$aliases[previewKey($alias)][$ref]=true;
     }unset($c);
@@ -55,7 +59,7 @@ function applyApprovedImportRules(array $report): array {
     foreach(['customers','orders'] as $kind)foreach($report[$kind] as &$r) {
         if(($r['review_disposition']??'')==='hold' && !array_diff(array_keys($r['deferred_issues']??[]),$handled))unset($r['review_disposition']);
     }unset($r);
-    $report['import_rules_revision']='2026-11-07-approved-1';$report['summary']['customer_review']=$report['summary']['order_review']=0;$report['summary']['excluded_orders']=0;$report['issue_counts']=[];
+    $report['import_rules_revision']='2026-11-07-approved-3';$report['summary']['customer_review']=$report['summary']['order_review']=0;$report['summary']['excluded_orders']=0;$report['issue_counts']=[];
     foreach($report['year_summary'] as &$y){$y['review']=0;$y['kimchi_sales_cents']=0;$y['other_income_cents']=0;}unset($y);
     foreach(['customers','orders'] as $kind)foreach($report[$kind] as $r) {
         if($r['issues']){$report['summary'][$kind==='customers'?'customer_review':'order_review']++;if($kind==='orders')$report['year_summary'][$r['sheet']]['review']++;}
