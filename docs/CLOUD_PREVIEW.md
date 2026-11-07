@@ -21,8 +21,25 @@ GitHub의 **Your codespaces**에서 같은 공간을 다시 열고 앱 링크로
 
 ## 개발자용
 
-`.devcontainer/devcontainer.json`은 `compose.yaml`과 `.devcontainer/compose.yaml`을 병합합니다. 초기 설정 파일은 `scripts/configure.py`로 생성하고 덮어쓰지 않습니다. DB는 전용 named volume에 보관합니다. `postCreateCommand`와 `postStartCommand`는 마이그레이션을 실행하며 기존 자료·가격을 보존합니다. 포트 8000은 PHP 서버이며 Codespaces 프록시를 통해 HTTPS로 연결합니다. `APP_SECURE_COOKIE=1`을 유지합니다.
+`.devcontainer/devcontainer.json`은 `compose.yaml`과 `.devcontainer/compose.yaml`을 병합합니다. 초기 설정 파일은 `scripts/configure.py`로 생성하고 덮어쓰지 않습니다. DB는 전용 named volume에 보관합니다. `postCreateCommand`는 마이그레이션을 실행합니다. `overrideCommand=true`로 에디터 컨테이너를 유지하고, `postStartCommand`의 `scripts/cloud-start.sh`가 마이그레이션 후 PHP 웹 서버를 별도로 시작합니다. 기존 서버가 있으면 중복 실행하지 않으며 HTTP 200 응답을 확인합니다. 기존 자료·가격을 보존합니다. 포트 8000은 PHP 서버이며 Codespaces 프록시를 통해 HTTPS로 연결합니다. `APP_SECURE_COOKIE=1`을 유지합니다.
 
 최초 계정 생성 UI는 `APP_ALLOW_INITIAL_SETUP=1`이고 사용자가 0명일 때만 보입니다. CSRF·비밀번호 확인·DB별 잠금으로 보호하며 계정이 만들어지면 닫힙니다. 일반 개발과 운영에서는 이 옵션을 끕니다.
 
 현재 Codex 작업 환경에는 외부 미리보기 URL 생성 도구가 없으며 GitHub API를 통한 Codespaces 생성도 사용할 수 없습니다. 실제 Codespaces 생성·HTTPS 경로·GitHub 포트 인증은 사용자의 계정에서 최초 실행 후 확인해야 합니다. Docker Compose 구성과 앱 초기 설정은 별도로 검증합니다. 링크가 생기기 전에는 실제 접속 주소를 만들어 안내하지 않습니다.
+
+
+## 8000 주소에서 HTTP 502가 나오는 경우
+
+터미널에서 `/app`과 PHP 버전이 확인된다면 다음 명령으로 서버를 직접 시작해 확인합니다.
+
+```sh
+php scripts/init.php && php -S 0.0.0.0:8000 -t public
+```
+
+`Development Server ... started`가 나오면 이 터미널을 닫지 말고 앱 탭을 새로고침합니다. `Address already in use`가 나오면 포트가 이미 사용 중입니다. 프로세스를 임의 종료하지 않습니다. PORTS에서 8000 행의 **Change Port Protocol → HTTP**를 확인하고, 브라우저의 GitHub 주소는 **HTTPS**를 그대로 사용합니다. 내부 응답은 아래 명령으로 확인하며, HTTP 200인데 외부가 502이면 포트 전달·프록시 연결을 확인합니다. HTTP 500이면 앱 로그를 확인합니다.
+
+```sh
+php -r '$h=@get_headers("http://127.0.0.1:8000/"); echo ($h[0] ?? "내부 서버 응답 없음"), PHP_EOL;'
+```
+
+최신 자동 실행 설정은 기존 Codespace에 저절로 반영되지 않습니다. 개발자가 변경 사항을 전달한 뒤 소스 갱신과 Rebuild Container를 진행합니다. 로컬 변경과 DB를 먼저 확인하고 Codespace를 삭제·재생성하지 않습니다.

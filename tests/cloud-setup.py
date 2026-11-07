@@ -24,7 +24,10 @@ def check(ok,label):
 try:
     admin('CREATE DATABASE '+name+' CHARACTER SET utf8mb4; GRANT ALL ON '+name+".* TO 'kimchi'@'%';")
     cmd(['exec','-T','-e','DB_NAME='+name,'web','php','scripts/init.php'])
-    container=cmd(['run','--rm','-d','--no-deps','-p','127.0.0.1:18081:8000','-e','DB_NAME='+name,'-e','APP_ALLOW_INITIAL_SETUP=1','-e','APP_SECURE_COOKIE=0','web']).strip()
+    container=cmd(['run','--rm','-d','--no-deps','-p','127.0.0.1:18081:8000','-e','DB_NAME='+name,'-e','APP_ALLOW_INITIAL_SETUP=1','-e','APP_SECURE_COOKIE=0','web','sleep','infinity']).strip()
+    for i in range(2):
+        started=subprocess.run(['docker','exec',container,'sh','/app/scripts/cloud-start.sh'],cwd=ROOT,text=True,capture_output=True,check=True)
+        check('김치방 앱 준비 완료' in started.stdout,'컨테이너 CMD가 서버가 아닐 때 자동 시작' if i==0 else '다시 실행해도 기존 서버 유지')
     for _ in range(30):
         try:status,html=req();break
         except (OSError,urllib.error.URLError):time.sleep(.2)

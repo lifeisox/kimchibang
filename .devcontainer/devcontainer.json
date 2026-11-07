@@ -1,12 +1,17 @@
 {
   "name": "Rodem Namu cloud preview",
-  "dockerComposeFile": ["../compose.yaml", "compose.yaml"],
+  "dockerComposeFile": [
+    "../compose.yaml",
+    "compose.yaml"
+  ],
   "service": "web",
   "workspaceFolder": "/app",
   "initializeCommand": "python3 scripts/configure.py",
   "postCreateCommand": "php scripts/init.php",
-  "postStartCommand": "php scripts/init.php",
-  "forwardPorts": [8000],
+  "postStartCommand": "sh scripts/cloud-start.sh",
+  "forwardPorts": [
+    8000
+  ],
   "portsAttributes": {
     "8000": {
       "label": "Rodem Namu kimchi app",
@@ -14,5 +19,6 @@
       "protocol": "http"
     }
   },
-  "shutdownAction": "stopCompose"
+  "shutdownAction": "stopCompose",
+  "overrideCommand": true
 }
