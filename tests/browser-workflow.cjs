@@ -19,7 +19,7 @@ const root=require('path').resolve(__dirname,'..');
  await page.getByLabel('주소',{exact:true}).fill('123 Example Street (가상 주소)');
  await page.getByRole('button',{name:'고객 저장하기'}).click();
  await page.waitForURL(/page=customer&/);cid=Number(new URL(page.url()).searchParams.get('id'));
- await page.getByRole('link',{name:'＋ 이 고객 주문 넣기'}).click();
+ await page.locator('.toolbar').getByRole('link',{name:'＋ 새 주문 넣기'}).click();
  await page.getByRole('button',{name:'포5 수량 늘리기',exact:true}).click();
  await page.getByRole('button',{name:'깍 수량 늘리기',exact:true}).click();
  await page.getByRole('button',{name:'주문 저장하기'}).click();

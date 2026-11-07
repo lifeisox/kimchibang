@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/excel-preview.php';
 require_once __DIR__.'/excel-decisions.php';
 require_once __DIR__.'/preview-review.php';
+require_once __DIR__.'/import-rules.php';
 function previewDirectory(): string {
     $dir=__DIR__.'/../.local/imports';
     if(!is_dir($dir) && !mkdir($dir,0700,true)) throw new RuntimeException('미리보기 저장 경로를 준비할 수 없습니다.');
@@ -27,7 +28,7 @@ function currentExcelPreview(bool $withReview=true): ?array {
     if(!is_file($file) || filesize($file)>20*1024*1024) return null;
     $data=json_decode(file_get_contents($file),true,512,JSON_THROW_ON_ERROR);
     if(($data['schema']??null)!==1)return null;
-    $report=applyExcelDecisions($data);return $withReview?applyPreviewReview($report):$report;
+    $report=applyApprovedImportRules(resolveKnownImportDuplicates(applyExcelDecisions($data)));return $withReview?applyApprovedImportRules(applyPreviewReview($report)):$report;
 }
 function previewUploadAction(): never {
     $dir=previewDirectory();

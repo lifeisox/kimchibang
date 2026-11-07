@@ -105,5 +105,5 @@ if(reviewForm){
  reviewForm.addEventListener('submit',e=>{if(!checks.some(c=>c.checked)){e.preventDefault();window.alert('처리할 그룹을 하나 이상 선택해 주세요.');}});
 }
 
-const productionSelect=document.querySelector('#production-select-all');
-productionSelect?.addEventListener('click',()=>{const boxes=[...document.querySelectorAll('#production-form input[name="order_ids[]"]')];const select=boxes.some(b=>!b.checked);boxes.forEach(b=>b.checked=select);});
+const brandFile=document.querySelector('#brand-file');
+brandFile?.addEventListener('change',()=>{const file=brandFile.files?.[0];if(!file||file.type!=='image/png'||file.size>2*1024*1024)return;const reader=new FileReader();reader.addEventListener('load',()=>{const preview=document.querySelector('#brand-preview');const img=document.createElement('img');img.className='brand-image original-brand';img.alt='선택한 원본 로고 미리보기';img.src=reader.result;preview.replaceChildren(img);});reader.readAsDataURL(file);});

@@ -27,7 +27,8 @@ function normalizeImportOrder(array $o,array $report): array {
         $family=$historical['family_code']??($current['code']??null);$live=$family?query('SELECT id,weight_g,legacy_key FROM products WHERE code=?',[$family])->fetch():false;
         if($live && $weight!==null && $live['weight_g']===$weight && $live['legacy_key']===null)$product=['kind'=>'current','code'=>$family,'weight_g'=>$weight];
         else $product=['kind'=>'legacy','key'=>$historical?'confirmed:'.$historical['key']:'source:'.$report['sha256'].':'.$o['sheet'].'!'.$i['column'],'weight_g'=>$weight];
-        $items[]=['source_column'=>$i['column'],'code'=>importText($i['header'],30,$ref),'name'=>importText($name,100,$ref),'weight_g'=>$weight,'price_cents'=>$price,'quantity'=>$q,'product'=>$product];$subtotal+=$q*$price;
+        if(!empty($i['import_as_other'])){$product=['kind'=>'other'];$name='기타';}
+        $items[]=['source_column'=>$i['column'],'code'=>!empty($i['import_as_other'])?'기타':importText($i['header'],30,$ref),'name'=>importText($name,100,$ref),'weight_g'=>$weight,'price_cents'=>$price,'quantity'=>$q,'product'=>$product];$subtotal+=$q*$price;
     }
     if(!$items)throw new InvalidArgumentException($ref.'에 제품이 없습니다.');
     $discount=importAmount($o['reviewed_discount_cents']??$o['discount_cents'],$ref);$fee=importAmount($o['historical_delivery_fee_cents']??0,$ref);$other=importAmount($o['other_sales_cents']??0,$ref);$charge=importAmount($o['historical_surcharge_cents']??0,$ref);$extra=importAmount($o['additional_income_cents']??0,$ref);
@@ -42,7 +43,7 @@ function importLedger(string $sha): array {
     $rows=query('SELECT r.* FROM import_records r JOIN import_sources s ON s.id=r.source_id WHERE s.source_sha=?',[$sha])->fetchAll();$map=[];foreach($rows as $r)$map[$r['entity_type'].':'.$r['source_ref']]=$r;return $map;
 }
 function buildImportPlan(array $report): array {
-    if(!isset($report['review_groups']))$report=applyPreviewReview($report);
+    if(!isset($report['review_groups']) || !isset($report['review_version']))$report=applyPreviewReview($report);
     if($report['summary']['customer_review'] || $report['summary']['order_review'])throw new InvalidArgumentException('확인 대기 항목을 처리하거나 보류한 뒤 가져오기를 준비해 주세요.');
     $ledger=importLedger($report['sha256']);$records=[];$counts=['new_customers'=>0,'new_orders'=>0,'skipped_customers'=>0,'skipped_orders'=>0,'excluded_orders'=>0,'held_customers'=>0,'held_orders'=>0,'kimchi_sales_cents'=>0,'delivery_fee_cents'=>0,'other_sales_cents'=>0,'other_charges_cents'=>0,'additional_income_cents'=>0,'income_total_cents'=>0,'order_total_cents'=>0];
     foreach(['customers','orders'] as $kind)foreach($report[$kind] as $r) {
@@ -67,11 +68,16 @@ function buildImportPlan(array $report): array {
         $c=$r['data'];$candidates=query("SELECT id FROM customers WHERE name=? OR name=? OR (nickname<>'' AND (nickname=? OR nickname=?))",[$c['name'],$c['nickname'],$c['name'],$c['nickname']])->fetchAll(PDO::FETCH_COLUMN);
         if(array_diff($candidates,$sourceTargets))throw new InvalidArgumentException($r['ref'].'과 같은 이름의 등록 고객이 있습니다.엑셀을 다시 분석해 중복 여부를 확인해 주세요.');
     }
-    $plan=['schema'=>1,'source_sha'=>$report['sha256'],'filename'=>$report['filename'],'database_identity'=>importDatabaseIdentity(),'database_digest'=>importDatabaseDigest(),'review_version'=>$report['review_version'],'policy'=>[$report['decision_revision']??null,$report['product_decision_revision']??null,$report['user_decision_revision']??null],'records'=>$records,'counts'=>$counts];
+    $plan=['schema'=>1,'source_sha'=>$report['sha256'],'filename'=>$report['filename'],'database_identity'=>importDatabaseIdentity(),'database_digest'=>importDatabaseDigest(),'review_version'=>$report['review_version'],'policy'=>[$report['decision_revision']??null,$report['product_decision_revision']??null,$report['user_decision_revision']??null,$report['import_rules_revision']??null],'records'=>$records,'counts'=>$counts];
     $plan['plan_sha']=importHash($plan);return $plan;
 }
 function importProduct(array $i): int {
     $p=$i['product'];
+    if($p['kind']==='other') {
+        $existing=query("SELECT * FROM products WHERE legacy_key='generic:other' OR code='기타'")->fetch();
+        if($existing){if($existing['name']!=='기타')throw new InvalidArgumentException('기타 제품의 기존 이름을 확인해 주세요.');return (int)$existing['id'];}
+        query("INSERT INTO products (code,name,weight_g,price_cents,active,legacy_key) VALUES ('기타','기타',NULL,0,0,'generic:other')");return (int)db()->lastInsertId();
+    }
     if($p['kind']==='current'){
         $live=query('SELECT * FROM products WHERE code=?',[$p['code']])->fetch();
         if(!$live || $live['weight_g']!==$p['weight_g'] || $live['legacy_key']!==null)throw new InvalidArgumentException('제품 기준이 바뀌었습니다. 가져오기를 다시 준비해 주세요.');return (int)$live['id'];

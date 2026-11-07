@@ -22,7 +22,7 @@ const {execFileSync}=require('child_process');
  await page.getByLabel('주소',{exact:true}).fill('123 Example Street, Ottawa (가상 주소)');
  await page.getByRole('button',{name:'고객 저장하기'}).click();
  await page.waitForURL(/page=customer&/); cid=Number(new URL(page.url()).searchParams.get('id'));
- await page.getByRole('link',{name:'＋ 이 고객 주문 넣기'}).click();
+ await page.locator('.toolbar').getByRole('link',{name:'＋ 새 주문 넣기'}).click();
  const expected=['포10','포5','맛10','맛5','깍','파','겉','물','물백','동','총각','갓','열','포백5'];
  if(JSON.stringify(await page.locator('.product-code').allTextContents())!==JSON.stringify(expected)) throw Error('Product order');
  await page.getByRole('button',{name:'포5 수량 늘리기',exact:true}).click();

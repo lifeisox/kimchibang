@@ -70,3 +70,13 @@ function optionalChoice(array $data,string $field,array $allowed): string {
     $v=textfield($data,$field,30);
     if($v!=='' && !in_array($v,$allowed,true))throw new InvalidArgumentException('선택 항목을 확인해 주세요.');return $v;
 }
+
+function excelImportCompleted(): bool {
+    foreach(query('SELECT summary FROM import_batches ORDER BY id DESC')->fetchAll(PDO::FETCH_COLUMN) as $json) {
+        $s=json_decode($json,true,512,JSON_THROW_ON_ERROR);
+        if((($s['new_orders']??0)+($s['skipped_orders']??0)>0) && !($s['held_orders']??0) && !($s['held_customers']??0))return true;
+    }
+    return false;
+}
+
+function excelImportMenuHidden(): bool {return getenv('APP_HIDE_IMPORT_AFTER_COMPLETE')==='1' && excelImportCompleted();}

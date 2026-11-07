@@ -19,6 +19,7 @@ function handleAction(): never {
     }
     if(empty($_SESSION['user_id'])) redirect('/');
     if($action==='logout') { $_SESSION=[]; session_regenerate_id(true); redirect('/'); }
+    if(in_array($action,['preview_group_decision','preview_upload','preview_refresh','import_prepare','import_execute'],true) && excelImportMenuHidden())throw new InvalidArgumentException('엑셀 가져오기를 이미 완료했습니다. 추가 고객과 주문은 앱에서 등록해 주세요.');
     if($action==='preview_group_decision') {
         databaseWriteLock();
         require_once __DIR__.'/preview-storage.php';$report=currentExcelPreview(false);
@@ -46,16 +47,17 @@ function handleAction(): never {
         $token=textfield($_POST,'job',48,true);$plan=loadImportJob($token,(int)$_SESSION['user_id']);
         $current=currentExcelPreview();
         if(!$current || $current['sha256']!==$plan['source_sha'] || $current['review_version']!==$plan['review_version'])throw new InvalidArgumentException('검토 기준이 바뀌었습니다. 가져오기를 다시 준비해 주세요.');
-        $policy=[$current['decision_revision']??null,$current['product_decision_revision']??null,$current['user_decision_revision']??null];
+        $policy=[$current['decision_revision']??null,$current['product_decision_revision']??null,$current['user_decision_revision']??null,$current['import_rules_revision']??null];
         if($policy!==$plan['policy'])throw new InvalidArgumentException('분류 기준이 바뀌었습니다. 가져오기를 다시 준비해 주세요.');
         $id=executeImportPlan($plan,(int)$_SESSION['user_id']);
         $_SESSION['flash']='가져오기가 완료되었습니다. 실행 번호 #'.$id.' · 원본 행과 백업을 보관했습니다.';
         redirect('/?page=excel-preview&tab=import');
     }
     databaseWriteLock();
+    if($action==='brand_upload'){require_once __DIR__.'/branding.php';saveBrandLogo($_FILES['brand_file']??[]);$_SESSION['flash']='원본 브랜드 로고를 적용했습니다.';redirect('/?page=brand');}
     if($action==='customer') {
-        $kind=$_POST['customer_kind']??'';if(!in_array($kind,['','person','organization'],true))throw new InvalidArgumentException('고객 종류를 확인해 주세요.');
-        $values=[textfield($_POST,'name',100,true),textfield($_POST,'nickname'),textfield($_POST,'phone',50),textfield($_POST,'address',500),textfield($_POST,'area'),textfield($_POST,'notes',15000),$kind,textfield($_POST,'affiliation',100),textfield($_POST,'contact_name',100),payerName($_POST),optionalChoice($_POST,'preferred_fulfillment',array_keys(FULFILLMENT_METHODS))];
+        $kind=$_POST['customer_kind']??'person';if(!in_array($kind,['person','organization'],true))throw new InvalidArgumentException('고객 종류를 확인해 주세요.');
+        $values=[textfield($_POST,'name',100,true),textfield($_POST,'nickname'),textfield($_POST,'phone',50),textfield($_POST,'address',500),textfield($_POST,'area'),textfield($_POST,'notes',15000),$kind,textfield($_POST,'affiliation',100),textfield($_POST,'contact_name',100),payerName($_POST),optionalChoice(array_merge(['preferred_fulfillment'=>'delivery'],$_POST),'preferred_fulfillment',array_keys(FULFILLMENT_METHODS))?:'delivery'];
         if((int)($_POST['id']??0)>0) {
             $id=(int)$_POST['id']; query('UPDATE customers SET name=?,nickname=?,phone=?,address=?,area=?,notes=?,customer_kind=?,affiliation=?,contact_name=?,payer_name=?,preferred_fulfillment=? WHERE id=?',[...$values,$id]);
         } else { query('INSERT INTO customers (name,nickname,phone,address,area,notes,customer_kind,affiliation,contact_name,payer_name,preferred_fulfillment) VALUES (?,?,?,?,?,?,?,?,?,?,?)',$values); $id=(int)db()->lastInsertId(); }

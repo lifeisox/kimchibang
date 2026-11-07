@@ -72,7 +72,7 @@ try:
     check('$90.15' in body and '$30.10' in body and '검증용 제품' in body and '3.2kg' in body,'가격·이름·용량 변경 후 과거 주문 보존')
     version=php('echo query("SELECT version FROM orders WHERE id=?",['+str(oid)+'])->fetchColumn();')
     status,body,_=req('/?page=order&id='+str(oid),{'action':'deliver_all','csrf':csrf,'id':oid,'version':version,'request_key':uuid.uuid4().hex,'delivered_on':'2026-11-06'})
-    check(status==200 and '✓ 전달 완료' in body and '이번 전달분 미입금' in body and '$90.15' in body,'배달과 입금 상태 분리')
+    check(status==200 and '✓ 전달 완료' in body and '전체 주문의 남은 대금' in body and '$90.15' in body,'배달과 입금 상태 분리')
     version=php('echo query("SELECT version FROM orders WHERE id=?",['+str(oid)+'])->fetchColumn();')
     status,body,_=req('/?page=order&id='+str(oid),{'action':'receive_payment','csrf':csrf,'id':oid,'version':version,'request_key':uuid.uuid4().hex,'payment_method':'etransfer','paid_on':'2026-11-06','amount':'90.15'})
     check(status==200 and '✓ 입금 완료' in body,'eTransfer 입금 처리')

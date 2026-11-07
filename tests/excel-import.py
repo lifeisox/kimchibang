@@ -18,15 +18,15 @@ query("INSERT INTO users (username,password_hash) VALUES ('import_fixture','unus
 $r=currentExcelPreview();$p=buildImportPlan($r);
 check($p['counts']['new_orders']===946 && $p['counts']['new_customers']===193,'원본 고객193·주문946');
 check($p['counts']['income_total_cents']===7784700,'전체 금액 77847');
-check($p['counts']['kimchi_sales_cents']===7735000 && $p['counts']['other_sales_cents']===18000 && $p['counts']['additional_income_cents']===8200,'김치·기타판매·추가수입 분리');
+check($p['counts']['kimchi_sales_cents']===7735000 && $p['counts']['other_charges_cents']===26200 && $p['counts']['additional_income_cents']===0,'판매·배송비·기타수입 분리');
 $token=saveImportJob($p,$actor);check(loadImportJob($token,$actor)===$p,'준비 화면 보관');
 try{loadImportJob($token,$actor+1);throw new RuntimeException('actor');}catch(InvalidArgumentException $e){echo "PASS 다른 사용자 준비 화면 차단\\n";}
 $bad=$p;foreach($bad['records'] as &$entry){if($entry['kind']==='orders' && $entry['state']==='ready'){$entry['data']['customer_ref']='missing';break;}}unset($entry);unset($bad['plan_sha']);$bad['plan_sha']=importHash($bad);
 try{executeImportPlan($bad,$actor);throw new RuntimeException('rollback');}catch(InvalidArgumentException $e){check((int)query('SELECT COUNT(*) FROM customers')->fetchColumn()===0 && (int)query('SELECT COUNT(*) FROM import_batches')->fetchColumn()===0,'실행 도중 오류시 전체 롤백');}
 $batch=executeImportPlan($p,$actor);
 check((int)query('SELECT COUNT(*) FROM orders')->fetchColumn()===946,'주문 저장');
-check((int)query('SELECT SUM(total_cents) FROM orders')->fetchColumn()===7776500,'주문금액은 추가수입 제외');
-check((int)query('SELECT SUM(additional_income_cents) FROM payments')->fetchColumn()===8200,'입금 추가수입 분리');
+check((int)query('SELECT SUM(total_cents) FROM orders')->fetchColumn()===7784700,'전체 주문 금액 보존');
+check((int)query('SELECT SUM(additional_income_cents) FROM payments')->fetchColumn()===0,'새 규칙에서 추가수입 중복 가산 없음');
 check((int)query('SELECT COUNT(*) FROM payments p WHERE p.amount_cents<>(SELECT COALESCE(SUM(a.amount_cents),0) FROM payment_allocations a WHERE a.payment_id=p.id)')->fetchColumn()===0,'모든 입금과 배분 합계 일치');
 check((int)query('SELECT COUNT(*) FROM products WHERE active=1')->fetchColumn()===14,'현재 판매제품 유지');
 check((int)query('SELECT COUNT(*) FROM orders WHERE delivery_date IS NOT NULL')->fetchColumn()===0,'실제 배송일 추정 금지');

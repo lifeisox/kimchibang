@@ -28,7 +28,13 @@ function balance(array $o,?array $items=null): array {
     $received=(int)query('SELECT COALESCE(SUM(amount_cents-additional_income_cents),0) FROM payments WHERE order_id=?',[$o['id']])->fetchColumn();
     $charges=(int)($o['other_sales_cents']??0)+(int)($o['other_charges_cents']??0);
     $due=$deliveredNet+($shipped?$fee+$charges:0);
-    return ['subtotal'=>$sub,'discount'=>$discount,'fee'=>$fee,'total'=>$sub-$discount+$fee+$charges,'received'=>$received,'delivery_due'=>$due,'collectable'=>max(0,$due-$received),'pending'=>$pending,'shipped'=>$shipped,'active'=>$active];
+    return ['subtotal'=>$sub,'discount'=>$discount,'fee'=>$fee,'total'=>$sub-$discount+$fee+$charges,'received'=>$received,'delivery_due'=>$due,'collectable'=>max(0,$sub-$discount+$fee+$charges-$received),'pending'=>$pending,'shipped'=>$shipped,'active'=>$active];
+}
+function protectedItemQty(array $i): int {
+    $paid=(int)query('SELECT COALESCE(SUM(amount_cents),0) FROM payment_allocations WHERE item_id=?',[$i['id']])->fetchColumn();
+    $low=0;$high=activeQty($i);
+    while($low<$high){$mid=intdiv($low+$high,2);if(itemNet($i,$mid)>=$paid)$high=$mid;else $low=$mid+1;}
+    return max((int)$i['delivered_quantity'],$paid>0?$low:0);
 }
 function refreshOrder(int $id): array {
     $o=query('SELECT * FROM orders WHERE id=?',[$id])->fetch(); $b=balance($o);
@@ -47,14 +53,28 @@ function positiveInt(mixed $v,int $min=0,int $max=999): int {
     if($n===false) throw new InvalidArgumentException('수량을 올바른 정수로 입력해 주세요.');return $n;
 }
 function allocatePayment(int $paymentId,int $orderId,int $amount,bool $legacy=false): void {
-    foreach(orderItems($orderId) as $i) {
-        $already=(int)query('SELECT COALESCE(SUM(amount_cents),0) FROM payment_allocations WHERE item_id=?',[$i['id']])->fetchColumn();
-        $due=itemNet($i,$legacy?activeQty($i):(int)$i['delivered_quantity'])-$already;
-        $part=min(max(0,$due),$amount);
-        if($part) query('INSERT INTO payment_allocations (payment_id,item_id,amount_cents) VALUES (?,?,?)',[$paymentId,$i['id'],$part]);
-        $amount-=$part;if(!$amount) break;
-    }
-    if($amount) query('INSERT INTO payment_allocations (payment_id,item_id,amount_cents) VALUES (?,NULL,?)',[$paymentId,$amount]);
+    $items=orderItems($orderId);$shipped=false;
+    $allocateProducts=function(bool $deliveredOnly)use($paymentId,$items,&$amount):void {
+        foreach($items as $i) {
+            $already=(int)query('SELECT COALESCE(SUM(amount_cents),0) FROM payment_allocations WHERE item_id=?',[$i['id']])->fetchColumn();
+            $due=itemNet($i,$deliveredOnly?(int)$i['delivered_quantity']:activeQty($i))-$already;
+            $part=min(max(0,$due),$amount);
+            if($part)query("INSERT INTO payment_allocations (payment_id,item_id,amount_cents,allocation_type) VALUES (?,?,?,'product')",[$paymentId,$i['id'],$part]);
+            $amount-=$part;if(!$amount)break;
+        }
+    };
+    $allocateFee=function()use($paymentId,$orderId,&$amount):void {
+        $fee=(int)query('SELECT delivery_fee_cents FROM orders WHERE id=?',[$orderId])->fetchColumn();
+        $already=(int)query('SELECT COALESCE(SUM(a.amount_cents),0) FROM payment_allocations a JOIN payments p ON p.id=a.payment_id WHERE p.order_id=? AND a.item_id IS NULL',[$orderId])->fetchColumn();
+        $part=min(max(0,$fee-$already),$amount);
+        if($part)query("INSERT INTO payment_allocations (payment_id,item_id,amount_cents,allocation_type) VALUES (?,NULL,?,'delivery_fee')",[$paymentId,$part]);
+        $amount-=$part;
+    };
+    foreach($items as $i)if($i['delivered_quantity'])$shipped=true;
+    // Delivered debt first; the remaining amount may be an advance on pending products.
+    $allocateProducts(true);if($amount&&$shipped)$allocateFee();
+    if($amount)$allocateProducts(false);if($amount)$allocateFee();
+    if($amount)throw new InvalidArgumentException('입금 배분 금액을 확인해 주세요.');
 }
 function workflowAction(string $action): int {
     $id=positiveInt($_POST['id']??null,1,PHP_INT_MAX);$key=textfield($_POST,'request_key',32,true);
@@ -76,6 +96,7 @@ function workflowAction(string $action): int {
             foreach($items as $i) {
                 if(!array_key_exists($i['id'],$pending)) throw new InvalidArgumentException('제품 목록이 변경되었습니다. 새로고침해 주세요.');
                 $n=positiveInt($pending[$i['id']]);$old=pendingQty($i);$delta=$n-$old;
+                if(activeQty($i)+$delta<protectedItemQty($i))throw new InvalidArgumentException('전달했거나 입금이 배정된 제품 수량은 취소할 수 없습니다. 환불이 필요한 경우 별도 정정이 필요합니다.');
                 if(activeQty($i)+$delta>999) throw new InvalidArgumentException('제품별 수량은 999개 이하로 입력해 주세요.');
                 if($delta<0) query('UPDATE order_items SET cancelled_quantity=cancelled_quantity+? WHERE id=?',[-$delta,$i['id']]);
                 if($delta>0) query('UPDATE order_items SET quantity=quantity+? WHERE id=?',[$delta,$i['id']]);
@@ -125,7 +146,7 @@ function workflowAction(string $action): int {
             $detail+=['delivered_on'=>$date,'address'=>$o['delivery_address'],'fulfillment'=>$o['fulfillment'],'items'=>$sent];
         } elseif($action==='receive_payment') {
             $amount=cents($_POST['amount']??'');
-            if($amount<=0 || $amount>$before['collectable']) throw new InvalidArgumentException('입금액은 전달한 제품의 미입금액 이내로 입력해 주세요.');
+            if($amount<=0 || $amount>$before['collectable']) throw new InvalidArgumentException('입금액은 전체 주문의 남은 대금 이내로 입력해 주세요.');
             $method=textfield($_POST,'payment_method',20,true);if(!in_array($method,['cash','etransfer'],true)) throw new InvalidArgumentException('현금 또는 eTransfer를 선택해 주세요.');
             $date=validDate(textfield($_POST,'paid_on',10,true));
             if($date<$o['order_date'] || $date>date('Y-m-d')) throw new InvalidArgumentException('입금일은 주문일부터 오늘 사이로 입력해 주세요.');
