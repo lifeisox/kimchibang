@@ -63,17 +63,20 @@ function allocatePayment(int $paymentId,int $orderId,int $amount,bool $legacy=fa
             $amount-=$part;if(!$amount)break;
         }
     };
-    $allocateFee=function()use($paymentId,$orderId,&$amount):void {
-        $fee=(int)query('SELECT delivery_fee_cents FROM orders WHERE id=?',[$orderId])->fetchColumn();
-        $already=(int)query('SELECT COALESCE(SUM(a.amount_cents),0) FROM payment_allocations a JOIN payments p ON p.id=a.payment_id WHERE p.order_id=? AND a.item_id IS NULL',[$orderId])->fetchColumn();
-        $part=min(max(0,$fee-$already),$amount);
-        if($part)query("INSERT INTO payment_allocations (payment_id,item_id,amount_cents,allocation_type) VALUES (?,NULL,?,'delivery_fee')",[$paymentId,$part]);
+    $allocateCharge=function(string $column,string $type)use($paymentId,$orderId,&$amount):void {
+        if(!in_array($column,['delivery_fee_cents','other_sales_cents','other_charges_cents'],true))throw new LogicException('Unknown charge');
+        $charge=(int)query('SELECT '.$column.' FROM orders WHERE id=?',[$orderId])->fetchColumn();
+        $legacy=$type==='delivery_fee'?" OR a.allocation_type='product'":'';
+        $already=(int)query('SELECT COALESCE(SUM(a.amount_cents),0) FROM payment_allocations a JOIN payments p ON p.id=a.payment_id WHERE p.order_id=? AND a.item_id IS NULL AND (a.allocation_type=?'.$legacy.')',[$orderId,$type])->fetchColumn();
+        $part=min(max(0,$charge-$already),$amount);
+        if($part)query('INSERT INTO payment_allocations (payment_id,item_id,amount_cents,allocation_type) VALUES (?,NULL,?,?)',[$paymentId,$part,$type]);
         $amount-=$part;
     };
     foreach($items as $i)if($i['delivered_quantity'])$shipped=true;
     // Delivered debt first; the remaining amount may be an advance on pending products.
-    $allocateProducts(true);if($amount&&$shipped)$allocateFee();
-    if($amount)$allocateProducts(false);if($amount)$allocateFee();
+    $allocateProducts(true);if($amount&&$shipped)$allocateCharge('delivery_fee_cents','delivery_fee');
+    if($amount)$allocateProducts(false);if($amount)$allocateCharge('delivery_fee_cents','delivery_fee');
+    if($amount)$allocateCharge('other_sales_cents','other_sales');if($amount)$allocateCharge('other_charges_cents','other_charge');
     if($amount)throw new InvalidArgumentException('입금 배분 금액을 확인해 주세요.');
 }
 function workflowAction(string $action): int {
@@ -83,7 +86,7 @@ function workflowAction(string $action): int {
     try {
         $o=query('SELECT * FROM orders WHERE id=? FOR UPDATE',[$id])->fetch();
         if(!$o) throw new InvalidArgumentException('주문을 찾을 수 없습니다.');
-        if($o['import_batch_id']??null)throw new InvalidArgumentException('과거 엑셀 주문은 원본 보존을 위해 수정·취소할 수 없습니다.');
+        if(($o['import_batch_id']??null) && !in_array($action,['deliver_items','deliver_all','receive_payment'],true))throw new InvalidArgumentException('엑셀 원본의 금액은 수정·취소하지 않습니다. 미완료 전달과 입금은 별도로 기록할 수 있습니다.');
         if(query('SELECT id FROM order_events WHERE request_key=? AND order_id=?',[$key,$id])->fetch()) {db()->commit();return $id;}
         if((int)($_POST['version']??0)!==(int)$o['version']) throw new InvalidArgumentException('다른 화면에서 주문이 변경되었습니다. 새로고침한 뒤 다시 확인해 주세요.');
         if($o['cancelled']) throw new InvalidArgumentException('취소한 주문은 변경할 수 없습니다.');
@@ -142,6 +145,7 @@ function workflowAction(string $action): int {
                 if($n) {query('UPDATE order_items SET delivered_quantity=delivered_quantity+? WHERE id=?',[$n,$i['id']]);$sent[]=['item_id'=>$i['id'],'product'=>$i['product_name'],'quantity'=>$n];}
             }
             if(!$sent) throw new InvalidArgumentException('이번에 전달한 수량을 하나 이상 입력해 주세요.');
+            query('UPDATE orders SET delivery_state_known=1 WHERE id=?',[$id]);
             $summary=$date.' 전달: '.implode(', ',array_map(fn($i)=>$i['product'].' '.$i['quantity'].'개',$sent));
             $detail+=['delivered_on'=>$date,'address'=>$o['delivery_address'],'fulfillment'=>$o['fulfillment'],'items'=>$sent];
         } elseif($action==='receive_payment') {
@@ -153,7 +157,7 @@ function workflowAction(string $action): int {
             $note=textfield($_POST,'payment_note',500);$payer=payerName($_POST);
             query('INSERT INTO payments (order_id,request_key,amount_cents,method,paid_on,note,payer_name,created_by) VALUES (?,?,?,?,?,?,?,?)',[$id,$key,$amount,$method,$date,$note,$payer,$_SESSION['user_id']]);
             allocatePayment((int)db()->lastInsertId(),$id,$amount);
-            query('UPDATE orders SET payment_method=? WHERE id=?',[$method,$id]);
+            query('UPDATE orders SET payment_method=?,payment_state_known=1 WHERE id=?',[$method,$id]);
             $summary=$date.' '.($method==='cash'?'현금':'eTransfer').' '.money($amount).' 입금';$detail+=['amount_cents'=>$amount,'paid_on'=>$date,'method'=>$method,'note'=>$note,'payer_name'=>$payer];
         } else throw new InvalidArgumentException('요청을 확인해 주세요.');
         $detail['after']=refreshOrder($id);

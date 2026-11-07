@@ -1,4 +1,14 @@
 'use strict';
+function googleMapUrl(address) {
+  const value=(address||'').replace(/\s+/gu,' ').trim();
+  if([...value].length<6||[...value].length>500||/https?:\/\/|[<>@]/iu.test(value)||!/\p{L}/u.test(value)||!/(?:^|[ ,#-])\d{1,6}[a-z]?(?:\s|,|-|$)/iu.test(value))return null;
+  const url=new URL('https://www.google.com/maps/search/');url.searchParams.set('api','1');url.searchParams.set('query',value);return url.href;
+}
+function createMapLink(address) {
+  const url=googleMapUrl(address);if(!url)return null;
+  const a=document.createElement('a');a.className='map-link no-print';a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.referrerPolicy='no-referrer';a.textContent='Google 지도 ↗';a.setAttribute('aria-label','Google 지도에서 주소 확인 (새 탭)');return a;
+}
+
 const formatMoney = cents => new Intl.NumberFormat('en-CA', {style:'currency',currency:'CAD'}).format(cents/100);
 const form = document.querySelector('#order-form');
 if (form) {
@@ -64,7 +74,7 @@ if (form) {
             document.querySelector('#customer-id').value=c.id;
             const selected=document.querySelector('#selected-customer'); selected.replaceChildren();
             const title=document.createElement('strong'); title.textContent=c.name+(c.nickname?' · '+c.nickname:'');
-            const address=document.createElement('p'); address.textContent=c.address; selected.append(title,address);
+            const address=document.createElement('p');address.className='address-with-map';address.textContent=c.address;const map=createMapLink(c.address);if(map)address.append(' ',map);selected.append(title,address);
             document.querySelector('#delivery-address').value=c.address;
             const method=Object.hasOwn({delivery:1,pickup:1,church:1},c.preferred_fulfillment)?c.preferred_fulfillment:'delivery';
             form.querySelector('[name=fulfillment][value="'+method+'"]').checked=true;
@@ -107,3 +117,13 @@ if(reviewForm){
 
 const brandFile=document.querySelector('#brand-file');
 brandFile?.addEventListener('change',()=>{const file=brandFile.files?.[0];if(!file||file.type!=='image/png'||file.size>2*1024*1024)return;const reader=new FileReader();reader.addEventListener('load',()=>{const preview=document.querySelector('#brand-preview');const img=document.createElement('img');img.className='brand-image original-brand';img.alt='선택한 원본 로고 미리보기';img.src=reader.result;preview.replaceChildren(img);});reader.readAsDataURL(file);});
+
+document.querySelectorAll('[data-map-input]').forEach(group=>{const input=document.getElementById(group.dataset.mapInput);const link=group.querySelector('a');const update=()=>{const url=googleMapUrl(input.value);link.hidden=!url;if(url)link.href=url;else link.removeAttribute('href');};input.addEventListener('input',update);input.addEventListener('change',update);update();});
+const productSales=document.querySelector('#product-sales-table');
+if(productSales){
+ const body=productSales.tBodies[0];const rows=[...body.rows];rows.forEach((row,i)=>row.dataset.originalIndex=String(i));
+ const collator=new Intl.Collator('ko',{numeric:true,sensitivity:'base'});let active='amount',direction='desc';
+ const buttons=[...productSales.querySelectorAll('button[data-sales-sort]')];
+ const indicate=()=>buttons.forEach(button=>{const selected=button.dataset.salesSort===active;button.closest('th').setAttribute('aria-sort',selected?(direction==='asc'?'ascending':'descending'):'none');button.querySelector('.sort-icon').textContent=selected?(direction==='asc'?'↑':'↓'):'↕';button.setAttribute('aria-label',button.dataset.sortLabel+' '+(selected&&direction==='asc'?'내림차순':'오름차순')+'으로 정렬');});
+ buttons.forEach(button=>button.addEventListener('click',()=>{const key=button.dataset.salesSort;direction=key===active&&direction==='asc'?'desc':'asc';active=key;const sorted=[...rows].sort((a,b)=>{let result=key==='name'?collator.compare(a.dataset.name,b.dataset.name):Number(a.dataset[key])-Number(b.dataset[key]);if(result)result*=direction==='asc'?1:-1;return result||Number(a.dataset.originalIndex)-Number(b.dataset.originalIndex);});body.append(...sorted);indicate();}));indicate();
+}

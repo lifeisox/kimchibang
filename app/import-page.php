@@ -3,7 +3,7 @@ require_once __DIR__.'/excel-import.php';
 $plan=null;$problem='';
 try {if(is_string($_GET['job']??null))$plan=loadImportJob($_GET['job'],(int)$_SESSION['user_id']);}catch(InvalidArgumentException $e){$problem=$e->getMessage();}
 ?>
-<section class="panel"><h2>확인한 엑셀을 실제 자료로 저장하기</h2><p>기존 고객·주문·입금·이전 가져오기 내역을 모두 삭제한 뒤 선택한 엑셀로 다시 채웁니다. 실행 직전에 전체 DB를 비공개 백업하며 오류가 나면 삭제와 저장을 함께 되돌립니다. 로그인 계정·로고·판매 제품과 가격 설정은 유지합니다.</p><p>과거 주문은 당시 단가를 유지하는 조회 전용 자료입니다. 기록에 없는 입금일·배송일·결제 방법은 미확인으로 남깁니다.</p>
+<section class="panel"><h2>확인한 엑셀을 실제 자료로 저장하기</h2><p>기존 고객·주문·입금·이전 가져오기 내역을 모두 삭제한 뒤 선택한 엑셀로 다시 채웁니다. 실행 직전에 전체 DB를 비공개 백업하며 오류가 나면 삭제와 저장을 함께 되돌립니다. 로그인 계정·로고·판매 제품과 가격 설정은 유지합니다.</p><p>가져온 주문은 당시 제품과 금액을 유지합니다. 미완료 전달과 입금은 주문 상세에서 각각 처리할 수 있습니다. 기록에 없는 입금일·배송일·결제 방법은 새로 입력하기 전까지 미확인으로 남깁니다.</p>
 <?php if($problem): ?><p class="alert error"><?=e($problem)?></p><?php endif ?>
 <?php if(!$plan && ($report['summary']['customer_review']||$report['summary']['order_review'])): ?><div class="notice">아직 확인이 필요한 고객 <?=$report['summary']['customer_review']?>명 / 주문 <?=$report['summary']['order_review']?>건이 있습니다. <a href="/?page=excel-preview&tab=issues">확인할 항목 보기</a></div><?php endif ?>
 <?php if(!$plan): ?><form method="post"><?=csrf()?><input type="hidden" name="action" value="import_prepare"><button class="button">저장할 내용 확인하기</button></form>
