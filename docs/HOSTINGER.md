@@ -86,3 +86,7 @@ HTTPS로 로그인 → 계정 관리에서 배우자 계정 생성 → 로고 �
 - Hostinger 백업 제공 범위와 보관 기간 확인. DB·로고·설정은 호스팅 외 안전한 위치에도 백업. 복원은 별도 DB에서 검증.
 
 실전 테스트 중 입력한 업무 자료는 Hostinger에 보관합니다. Codespaces 자료와 자동 동기화되지 않습니다. 이후 변경은 먼저 개발 환경에서 검증한 다음 Hostinger 코드만 업데이트하고, 업데이트 전 DB를 백업합니다. `.local`과 `config/local.php`는 배포 파일로 덮어쓰지 않습니다.
+
+## MariaDB 가져오기 호환성
+
+DB 식별은 MySQL에서는 기존 server_uuid 해시를 유지하고 MariaDB에서는 hostname과 server_id를 이용합니다. MariaDB에는 server_uuid가 없어 이전 코드로 저장 준비 시 오류 1193이 발생했습니다. 수정은 app/import-backup.php의 식별 함수에만 해당하며 스키마·업무 자료 변경은 없습니다. scripts/hostinger-check.php도 식별 조회를 검사합니다. `python tests/mariadb-import.py`는 별도 MariaDB 11.8 서버에서 오류 재현·HTTP 준비/실행·금액 보존·복원·기존 MySQL 해시 호환성을 검증합니다.

@@ -1,7 +1,12 @@
 <?php
 declare(strict_types=1);
 function importDatabaseIdentity(): string {
-    return hash('sha256',(string)getenv('DB_HOST').'|'.query('SELECT DATABASE()')->fetchColumn().'|'.query('SELECT @@server_uuid')->fetchColumn());
+    // MariaDB has no MySQL server_uuid variable. Keep existing MySQL backup IDs stable.
+    $version=(string)query('SELECT VERSION()')->fetchColumn();
+    $server=stripos($version,'MariaDB')!==false
+        ? query("SELECT CONCAT('mariadb:',@@hostname,':',@@server_id)")->fetchColumn()
+        : query('SELECT @@server_uuid')->fetchColumn();
+    return hash('sha256',(string)getenv('DB_HOST').'|'.query('SELECT DATABASE()')->fetchColumn().'|'.$server);
 }
 function importDatabaseDigest(): string {
     $context=hash_init('sha256');

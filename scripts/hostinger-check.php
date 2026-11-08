@@ -9,7 +9,9 @@ try {
     if(!is_dir($root.'/.local')&&!mkdir($root.'/.local',0700,true))throw new RuntimeException('비공개 저장 폴더를 만들 수 없습니다.');
     if(!is_writable($root.'/.local'))throw new RuntimeException('비공개 저장 폴더 쓰기 권한을 확인해 주세요.');
     query('SELECT 1');
-    echo 'PASS PHP 확장·HTTPS 쿠키 설정·비공개 폴더·DB 연결'.PHP_EOL;
+    require_once __DIR__.'/../app/import-backup.php';
+    importDatabaseIdentity();
+    echo 'PASS PHP 확장·HTTPS 쿠키 설정·비공개 폴더·DB 연결·가져오기 DB 식별'.PHP_EOL;
     echo 'DB 버전: '.query('SELECT VERSION()')->fetchColumn().PHP_EOL;
     echo '검사는 업무 데이터를 변경하지 않았습니다. HTTPS와 공개 폴더 차단은 실제 URL에서 별도로 확인합니다.'.PHP_EOL;
 } catch(Throwable $e) {fwrite(STDERR,'서버 점검 실패: '.($e instanceof PDOException?'DB 접속 설정과 DB 권한을 확인해 주세요.':$e->getMessage()).PHP_EOL);exit(1);}
