@@ -127,3 +127,25 @@ if(productSales){
  const indicate=()=>buttons.forEach(button=>{const selected=button.dataset.salesSort===active;button.closest('th').setAttribute('aria-sort',selected?(direction==='asc'?'ascending':'descending'):'none');button.querySelector('.sort-icon').textContent=selected?(direction==='asc'?'↑':'↓'):'↕';button.setAttribute('aria-label',button.dataset.sortLabel+' '+(selected&&direction==='asc'?'내림차순':'오름차순')+'으로 정렬');});
  buttons.forEach(button=>button.addEventListener('click',()=>{const key=button.dataset.salesSort;direction=key===active&&direction==='asc'?'desc':'asc';active=key;const sorted=[...rows].sort((a,b)=>{let result=key==='name'?collator.compare(a.dataset.name,b.dataset.name):Number(a.dataset[key])-Number(b.dataset[key]);if(result)result*=direction==='asc'?1:-1;return result||Number(a.dataset.originalIndex)-Number(b.dataset.originalIndex);});body.append(...sorted);indicate();}));indicate();
 }
+
+const menuToggle=document.querySelector('.menu-toggle');
+if(menuToggle){
+ const sidebar=menuToggle.closest('.sidebar');
+ const closeMenu=()=>{sidebar.classList.remove('menu-open');menuToggle.setAttribute('aria-expanded','false');menuToggle.setAttribute('aria-label','메뉴 열기');};
+ menuToggle.addEventListener('click',()=>{const open=sidebar.classList.toggle('menu-open');menuToggle.setAttribute('aria-expanded',String(open));menuToggle.setAttribute('aria-label',open?'메뉴 닫기':'메뉴 열기');});
+ document.addEventListener('keydown',event=>{if(event.key==='Escape'&&sidebar.classList.contains('menu-open')){closeMenu();menuToggle.focus();}});
+ document.addEventListener('click',event=>{if(!sidebar.contains(event.target))closeMenu();});
+ window.matchMedia('(max-width:720px)').addEventListener('change',closeMenu);
+}
+// Keep every value and action visible on narrow screens, with its column label.
+document.querySelectorAll('.table-wrap table').forEach(table=>{
+ const headers=[...table.querySelectorAll('thead tr:last-child th')];
+ if(!headers.length){table.classList.add('mobile-key-values');return;}
+ table.classList.add('mobile-cards');
+ if(table.querySelector('thead button'))table.classList.add('mobile-sortable');
+ table.querySelectorAll('tbody tr').forEach(row=>{[...row.cells].forEach((cell,index)=>{
+  if(cell.colSpan>1){cell.classList.add('mobile-wide-cell');return;}
+  cell.dataset.label=headers[index]?.textContent.replace(/[↑↓↕]/g,'').trim()||'';
+  cell.style.setProperty('--field-rows',String(Math.max(1,[...cell.childNodes].filter(node=>node.nodeType===1||(node.nodeType===3&&node.textContent.trim())).length)));
+ });});
+});
