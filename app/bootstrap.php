@@ -83,3 +83,5 @@ function excelImportCompleted(): bool {
 function excelImportMenuHidden(): bool {return getenv('APP_HIDE_IMPORT_AFTER_COMPLETE')==='1' && excelImportCompleted();}
 
 require_once __DIR__.'/maps.php';
+
+require_once __DIR__.'/assets.php';
