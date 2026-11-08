@@ -19,6 +19,10 @@ function handleAction(): never {
     }
     if(empty($_SESSION['user_id'])) redirect('/');
     if($action==='logout') { $_SESSION=[]; session_regenerate_id(true); redirect('/'); }
+    if(in_array($action,['production_save','recipe_save','recipe_delete','production_links','retail_save','retail_delete'],true)) {
+        $lock=databaseWriteLock();
+        try {require_once __DIR__.'/production.php';productionAction($action);} finally {if($lock)databaseWriteLock(true);}
+    }
     if(in_array($action,['preview_group_decision','preview_upload','preview_refresh','import_prepare','import_execute'],true) && excelImportMenuHidden())throw new InvalidArgumentException('엑셀 가져오기를 이미 완료했습니다. 추가 고객과 주문은 앱에서 등록해 주세요.');
     if($action==='preview_group_decision') {
         databaseWriteLock();

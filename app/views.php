@@ -1,6 +1,8 @@
 <?php
 function pv(string $key,string $default=''): string {return is_string($_POST[$key]??null)?$_POST[$key]:$default;}
 if($page==='accounts'): require __DIR__.'/accounts-page.php';
+elseif($page==='production'): require __DIR__.'/production-page.php';
+elseif($page==='production-settings'): require __DIR__.'/production-settings.php';
 elseif($page==='brand'): require __DIR__.'/brand-page.php';
 elseif($page==='sales'): require __DIR__.'/sales-page.php';
 elseif($page==='excel-preview'): require __DIR__.'/preview-page.php';
