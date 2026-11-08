@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/config.php';
 date_default_timezone_set('America/Toronto');
 if (PHP_SAPI !== 'cli') {
     ini_set('session.use_strict_mode', '1');

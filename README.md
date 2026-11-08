@@ -65,7 +65,7 @@ docker compose exec -T web php scripts/create-user.php second-user < /안전한/
 
 `./scripts/backup.sh`는 비공개 `backups/`에 SQL을 저장합니다. 실제 가져오기와 업데이트 전 백업은 `.local/import-backups/`에도 저장하며 Git에서 제외합니다. 클라우드 작업 공간·Codespace 보존 자체를 백업으로 간주하지 말고 별도 안전한 위치에 보관하세요. 복원은 기존 자료를 덮어쓸 수 있으므로 사용자 명시 요청 후 별도 DB에서 먼저 검증합니다. `scripts/restore-import.php`는 같은 DB의 백업인지 확인하고 복원 직전 안전 백업도 만듭니다.
 
-Hostinger는 아직 배포하지 않았습니다. 운영 전 PHP·pdo_mysql·MySQL 호환성과 HTTPS를 확인하고 document root를 public/으로 지정합니다. DB 접속 정보는 서버의 안전한 환경 변수 DB_HOST, DB_NAME, DB_USER, DB_PASSWORD로 제공합니다. `.env`를 웹으로 노출하지 않습니다. 초기 계정 설정을 끄고 사용자 계정, 접근 통제, DB와 로고 이전·백업·복원·최종 가져오기 잠금을 검증합니다.
+[Hostinger 실전 테스트 배포 안내](docs/HOSTINGER.md)와 `scripts/package-hostinger.py`로 전용 배포 파일을 준비할 수 있습니다. `k.ottawakfood.com`의 실제 웹 루트·DB·SSH 접속을 확인한 후 설치합니다. Hostinger는 아직 배포하지 않았습니다. 운영 전 PHP·pdo_mysql·MySQL 호환성과 HTTPS를 확인하고 document root를 public/으로 지정합니다. DB 접속 정보는 서버의 안전한 환경 변수 DB_HOST, DB_NAME, DB_USER, DB_PASSWORD로 제공합니다. `.env`를 웹으로 노출하지 않습니다. 초기 계정 설정을 끄고 사용자 계정, 접근 통제, DB와 로고 이전·백업·복원·최종 가져오기 잠금을 검증합니다.
 
 ## 검증
 

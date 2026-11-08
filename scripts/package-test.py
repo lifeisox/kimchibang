@@ -6,7 +6,7 @@ root=Path(__file__).resolve().parent.parent
 out=Path(sys.argv[1]) if len(sys.argv)>1 else root.parent/'kimchibang-windows-test.zip'
 files=[]
 for folder in ['app','public','config','database','scripts','docs']:
-    files.extend(p for p in (root/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts)
+    files.extend(p for p in (root/folder).rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.name!='local.php')
 files.extend(root/p for p in ['README.md','Dockerfile','compose.yaml','.dockerignore','.gitignore','windows-start.cmd','windows-stop.cmd'])
 with ZipFile(out,'w',ZIP_DEFLATED) as z:
     for p in sorted(files):

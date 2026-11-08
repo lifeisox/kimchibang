@@ -4,3 +4,6 @@
 
 __pycache__/
 *.pyc
+
+/config/local.php
+/dist/
