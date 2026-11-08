@@ -79,3 +79,18 @@ function productionAction(string $action): never {
  $_SESSION['flash']='생산 기준을 저장했습니다. 기존에 저장한 계획은 그대로 유지됩니다.';redirect('/?page=production-settings');
 }
 function productionKg(?float $g): string {return $g===null?'미확인':rtrim(rtrim(number_format($g/1000,3,'.',','),'0'),'.').' kg';}
+
+// Group the saved detail for display only; original snapshots and brining totals stay intact.
+function productionSummaryRows(array $rows): array {
+ $groups=[];
+ foreach($rows as $row) {
+  $key=json_encode([$row['channel'],$row['name']],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+  if(!isset($groups[$key]))$groups[$key]=['channel'=>$row['channel'],'name'=>$row['name'],'quantity'=>0,'grams'=>0,'materials'=>[],'incomplete'=>false];
+  $g=&$groups[$key];$g['quantity']+=(int)$row['quantity'];
+  $g['grams']=$g['grams']===null||$row['grams']===null?null:$g['grams']+$row['grams'];
+  if(!$row['materials'])$g['incomplete']=true;
+  foreach($row['materials'] as $material=>$grams)$g['materials'][$material]=($g['materials'][$material]??0)+$grams;
+  unset($g);
+ }
+ return array_values($groups);
+}
