@@ -37,7 +37,7 @@ function productionSnapshot(array $ids,array $retail): array {
  if(!$rows)throw new InvalidArgumentException('주문을 선택하거나 마트 수량을 입력해 주세요.');
  $totals=[];$groups=['pogi'=>['배추'=>0,'무우'=>0,'절임소금'=>0],'mat'=>['배추'=>0,'무우'=>0,'절임소금'=>0]];
  foreach($rows as &$row) {
-  $recipe=$recipes[$row['recipe_id']]??null;$row['grams']=$row['weight_g']===null?null:(int)$row['weight_g']*$row['quantity'];$row['materials']=[];$row['group']='none';$row['recipe_name']=$recipe['name']??'배합 기준 확인 필요';
+  $recipe=$row['recipe_id']===null?null:($recipes[$row['recipe_id']]??null);$row['grams']=$row['weight_g']===null?null:(int)$row['weight_g']*$row['quantity'];$row['materials']=[];$row['group']='none';$row['recipe_name']=$recipe['name']??'배합 기준 확인 필요';
   if(!$recipe||!$row['grams']){$warnings[]=$row['channel'].' '.$row['name'].' '.($row['weight_g']===null?'용량 확인 필요':'배합 기준 확인 필요');continue;}
   $row['materials']=productionMaterials($recipe,$row['grams']);$row['group']=$recipe['brine_group'];$used[$row['recipe_id']]=$recipe;
   foreach($row['materials'] as $m=>$g){$totals[$m]=($totals[$m]??0)+$g;if(isset($groups[$row['group']])&&array_key_exists($m,$groups[$row['group']]))$groups[$row['group']][$m]+=$g;}

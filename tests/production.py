@@ -64,6 +64,13 @@ check((int)query('SELECT COUNT(*) FROM products')->fetchColumn()===14,'마트제
  if r.returncode:raise RuntimeError(r.stderr)
  import fitz
  check(len(fitz.open('/tmp/kimchi-production-plan.pdf'))==1,'생산표와 절임계획 A4 한 페이지 출력')
+ # Missing recipe is an expected business state, not a PHP 8.5 warning.
+ app('query("UPDATE production_links SET recipe_id=NULL WHERE product_id=(SELECT id FROM products WHERE code=?)",["포5"]);')
+ result=app('set_error_handler(function($severity,$message){throw new ErrorException($message,0,$severity);});$s=productionSnapshot([1],[]);echo json_encode([count($s["warnings"]),$s["rows"][0]["materials"],$s["rows"][0]["recipe_id"]]);')
+ check(json.loads(result)==[1,[],None],'배합 미등록(null) 제품은 PHP 경고 없이 확인 필요로 표시')
+ _,html,_=req('/?page=production')
+ status,html,url=req('/?page=production',{'action':'production_save','csrf':csrf(html),'request_key':uuid.uuid4().hex,'title':'배합 미등록 시험','plan_date':'2026-11-08','orders[]':['1']})
+ check(status==200 and '배합 기준 확인 필요' in html and 'Deprecated' not in html and 'Cannot modify header' not in html and 'id=' in url,'미등록 배합 포함 계획 저장·리다이렉트 성공')
  # Initialization is idempotent and never reseeds deleted/custom recipes.
  cmd(['exec','-T','-e','DB_NAME='+name,'web','php','scripts/init.php'])
  check(app('echo query("SELECT COUNT(*) FROM production_retail WHERE active=1")->fetchColumn();').strip()=='10','초기화 재실행 시 사용자 설정 보존')
