@@ -15,7 +15,7 @@ try {
             }
         }
     }
-    foreach(['database/schema.sql','config/excel-decisions.json','config/hostinger.example.php','public/index.php','scripts/init.php','scripts/create-user.php','scripts/hostinger-check.php','scripts/apply-cloud-update.php','scripts/restore-import.php'] as $file)$zip->addFile($root.'/'.$file,'kimchibang/'.$file);
+    foreach(['database/schema.sql','config/excel-decisions.json','config/hostinger.example.php','public/index.php','scripts/init.php','scripts/create-user.php','scripts/hostinger-check.php','scripts/apply-cloud-update.php','scripts/restore-import.php','scripts/hostinger-update.sh'] as $file)$zip->addFile($root.'/'.$file,'kimchibang/'.$file);
     $web='public_html/kimchibang/';
     $zip->addFromString($web.'index.php',"<?php\nrequire __DIR__.'/../../kimchibang/public/index.php';\n");
     foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/public/assets',FilesystemIterator::SKIP_DOTS)) as $file) {

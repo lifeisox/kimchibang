@@ -90,3 +90,14 @@ HTTPS로 로그인 → 계정 관리에서 배우자 계정 생성 → 로고 �
 ## MariaDB 가져오기 호환성
 
 DB 식별은 MySQL에서는 기존 server_uuid 해시를 유지하고 MariaDB에서는 hostname과 server_id를 이용합니다. MariaDB에는 server_uuid가 없어 이전 코드로 저장 준비 시 오류 1193이 발생했습니다. 수정은 app/import-backup.php의 식별 함수에만 해당하며 스키마·업무 자료 변경은 없습니다. scripts/hostinger-check.php도 식별 조회를 검사합니다. `python tests/mariadb-import.py`는 별도 MariaDB 11.8 서버에서 오류 재현·HTTP 준비/실행·금액 보존·복원·기존 MySQL 해시 호환성을 검증합니다.
+
+## 설치된 Hostinger 업데이트
+
+
+업데이트 중 두 사용자는 주문·입금 입력을 잠시 멈춥니다. 기존 설치 폴더에 ZIP을 바로 풀지 않고, 도메인 폴더의 `kimchi-update-production` 같은 새 비공개 폴더에 압축을 풉니다. 그 안의 `kimchibang/scripts/hostinger-update.sh`를 실행합니다.
+
+```sh
+sh kimchibang/scripts/hostinger-update.sh /home/u870259482/domains/ottawakfood.com
+```
+
+스크립트는 신규 PHP 문법 점검 → 기존 DB 백업 → 비공개 코드 백업 → 앱·DB 스크립트 복사 → 백업 및 새 테이블 초기화 → 공개 화면·정적 파일 복사 → 서버 점검 순서로 실행합니다. 오류 발생 시 즉시 중단합니다. 출력된 백업 파일을 보존하고 에러를 확인하며, 임의 DB 복원·재가져오기를 하지 않습니다. `.local`, 로고, `config/local.php`, 웹 루트의 기존 `.htaccess`/`.user.ini`는 덮어쓰지 않습니다. 설치 후 브라우저 강력 새로고침과 생산 계획 및 기존 주문 확인을 합니다. 기존 자료를 유지하므로 엑셀을 다시 가져올 필요가 없습니다.

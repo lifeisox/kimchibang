@@ -9,7 +9,7 @@ files=[]
 for folder in ['app','database']:
     files.extend(p for p in (root/folder).rglob('*.php') if p.is_file())
 files += [root/'database/schema.sql',root/'config/excel-decisions.json',root/'config/hostinger.example.php',root/'public/index.php']
-files += [root/'scripts'/n for n in ['init.php','create-user.php','hostinger-check.php','apply-cloud-update.php','restore-import.php']]
+files += [root/'scripts'/n for n in ['init.php','create-user.php','hostinger-check.php','apply-cloud-update.php','restore-import.php','hostinger-update.sh']]
 with ZipFile(out,'w',ZIP_DEFLATED) as z:
     for p in sorted(set(files)):z.write(p,'kimchibang/'+p.relative_to(root).as_posix())
     # Both folders live under domains/ottawakfood.com; only public_html/kimchibang is public.
