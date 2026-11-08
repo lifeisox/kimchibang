@@ -1,12 +1,12 @@
 # Hostinger 실전 테스트 — k.ottawakfood.com
 
-사용자 확인: Premium Web Hosting, k 서브도메인 생성 완료, SSH 메뉴 제공. 최신 엑셀로 새 DB에서 시작하며 기존 Codespaces 업무 DB는 복원하지 않습니다.
+사용자 확인: Premium Web Hosting, k 서브도메인 생성 완료, SSH 접속 성공. 공개 경로는 `/home/u870259482/domains/ottawakfood.com/public_html/kimchibang`, 비공개 경로는 `/home/u870259482/domains/ottawakfood.com/kimchibang`입니다. CLI PHP 8.5.12와 필요한 확장 확인 완료. 웹 PHP 버전과 실제 DB 연결은 설치 후 별도로 검증합니다. 최신 엑셀로 새 DB에서 시작하며 기존 Codespaces 업무 DB는 복원하지 않습니다.
 
 배포 대상은 기존 ottawakfood.com 사이트와 분리된 서브도메인입니다. 기존 사이트의 public_html 전체를 덮어쓰거나 지우지 마세요. 아직 실제 Hostinger 서버 배포는 실행하지 않았습니다.
 
 ## 1. hPanel에서 준비
 
-1. ottawakfood.com 웹사이트 관리 → 서브도메인에서 `k`를 생성합니다. 웹 폴더 위치를 확인합니다. 아래 예시는 `domains/ottawakfood.com/public_html/k`입니다. 실제 경로가 다르면 설치 경로를 조정해야 합니다.
+1. ottawakfood.com 웹사이트 관리 → 서브도메인에서 `k`를 생성합니다. 웹 폴더 위치를 확인합니다. 아래 예시는 `domains/ottawakfood.com/public_html/kimchibang`입니다. 실제 경로가 다르면 설치 경로를 조정해야 합니다.
 2. 서브도메인의 SSL 인증서를 활성화하고 HTTPS 접속을 확인합니다. DNS를 다른 업체에서 관리 중이면 Hostinger가 안내하는 서버 IP로 k 레코드를 추가합니다. 기존 루트 도메인·메일 레코드는 유지합니다.
 3. MySQL 관리에서 이 앱 전용의 빈 DB와 전용 사용자를 만듭니다. DB 이름·사용자·접속 호스트는 hPanel에 표시된 정확한 값을 사용합니다. 실제 비밀번호는 채팅에 올리지 않습니다.
 4. PHP는 지원되는 8.2 이상으로 선택합니다. 현재 개발 환경은 PHP 8.5입니다. `pdo_mysql`, `mbstring`, `SimpleXML`, `Phar`, `session` 확장이 필요합니다. 메인 사이트와 PHP 설정을 공유하는 상품이면 기존 사이트 호환성을 먼저 확인합니다.
@@ -14,7 +14,7 @@
 
 ## 2. 배포 파일 구조
 
-개발 환경에서 `python scripts/package-hostinger.py`를 실행하면 `dist/kimchibang-hostinger.zip`이 생성됩니다. DB 비밀번호·계정·고객 자료·엑셀·백업·개발용 실행 도구는 포함하지 않습니다. 원본 로고는 따로 옮기거나 앱에서 등록합니다.
+개발 환경에서 `php scripts/package-hostinger.php` (또는 Python이 있는 환경에서 `python scripts/package-hostinger.py`)를 실행하면 `dist/kimchibang-hostinger.zip`이 생성됩니다. DB 비밀번호·계정·고객 자료·엑셀·백업·개발용 실행 도구는 포함하지 않습니다. 원본 로고는 따로 옮기거나 앱에서 등록합니다.
 
 압축을 **도메인 폴더**에 풀었을 때 다음 구조가 되어야 합니다. ZIP 자체는 공개 폴더에 보관하지 마세요.
 
