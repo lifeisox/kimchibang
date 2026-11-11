@@ -63,7 +63,17 @@ check((int)query('SELECT COUNT(*) FROM products')->fetchColumn()===14,'마트제
  r=subprocess.run(['node','tests/browser-production.cjs'],cwd=ROOT,env=env,text=True,capture_output=True);print(r.stdout,flush=True)
  if r.returncode:raise RuntimeError(r.stderr)
  import fitz
- check(len(fitz.open('/tmp/kimchi-production-plan.pdf'))==1,'생산표와 절임계획 A4 한 페이지 출력')
+ pdf=fitz.open('/tmp/kimchi-production-plan.pdf')
+ spans=[span for page in pdf for block in page.get_text('dict')['blocks'] if 'lines' in block for line in block['lines'] for span in line['spans'] if span['text'].strip()]
+ check(bool(spans) and min(s['size'] for s in spans)>=10.99,'생산 계획 인쇄 PDF 모든 글씨 최소 11pt')
+ check('생산 시험 고객' in ''.join(page.get_text() for page in pdf),'인쇄 PDF에 선택 주문자 포함')
+ # Exercise listings/pagination and customer totals with >30 records.
+ app("""query("INSERT INTO customers (id,name,notes) VALUES (2,'주문없는고객','')");
+for($id=4;$id<=36;$id++) {query("INSERT INTO orders (id,request_key,customer_id,customer_name,delivery_address,order_date,delivery_date,fulfillment,subtotal_cents,total_cents,notes,created_by,cancelled) VALUES (?,?,1,'생산 시험 고객','','2026-01-01','2026-01-02','pickup',5000,5000,'',1,?)",[$id,bin2hex(random_bytes(16)),$id===36?1:0]);$pid=query("SELECT id FROM products WHERE code='맛10'")->fetchColumn();query("INSERT INTO order_items (order_id,product_id,product_code,product_name,weight_g,unit_price_cents,quantity) VALUES (?,?,'맛10','맛김치',10000,9000,1)",[$id,$pid]);}
+""")
+ env['TEST_LEGACY_PLAN']=app('''$s=json_decode(query("SELECT snapshot FROM production_plans WHERE id=1")->fetchColumn(),true);foreach($s["orders"] as &$o)unset($o["items"]);unset($o);query("INSERT INTO production_plans (request_key,plan_date,title,snapshot,created_by) VALUES (?,?,?,?,1)",[bin2hex(random_bytes(16)),"2026-11-11","이전 계획 시험",json_encode($s)]);echo db()->lastInsertId();''').strip()
+ r=subprocess.run(['node','tests/browser-order-display.cjs'],cwd=ROOT,env=env,text=True,capture_output=True);print(r.stdout,flush=True)
+ if r.returncode:raise RuntimeError(r.stderr)
  # Missing recipe is an expected business state, not a PHP 8.5 warning.
  app('query("UPDATE production_links SET recipe_id=NULL WHERE product_id=(SELECT id FROM products WHERE code=?)",["포5"]);')
  result=app('set_error_handler(function($severity,$message){throw new ErrorException($message,0,$severity);});$s=productionSnapshot([1],[]);echo json_encode([count($s["warnings"]),$s["rows"][0]["materials"],$s["rows"][0]["recipe_id"]]);')

@@ -19,15 +19,16 @@ function productionSnapshot(array $ids,array $retail): array {
  foreach(array_unique($ids) as $id) {
   $id=positiveInt($id,1,PHP_INT_MAX);$o=query('SELECT * FROM orders WHERE id=? AND cancelled=0',[$id])->fetch();
   if(!$o)throw new InvalidArgumentException('선택한 주문이 취소되었거나 없습니다. 새로고침해 주세요.');
-  $units=0;
+  $units=0;$sourceItems=[];
   foreach(orderItems($id) as $item)if($n=pendingQty($item)) {
+   $sourceItems[]=['code'=>$item['product_code'],'quantity'=>$n];
    $units+=$n;$rid=query('SELECT recipe_id FROM production_links WHERE product_id=?',[$item['product_id']])->fetchColumn();
    $key='order:'.$item['product_id'].':'.$item['weight_g'];
    if(!isset($rows[$key]))$rows[$key]=['channel'=>'주문분','name'=>$item['product_name'],'weight_g'=>$item['weight_g'],'quantity'=>0,'recipe_id'=>$rid?(int)$rid:null];
    $rows[$key]['quantity']+=$n;
   }
   if(!$units)throw new InvalidArgumentException('이미 모두 전달한 주문이 있습니다. 목록을 새로고침해 주세요.');
-  $sources[]=['id'=>$id,'name'=>$o['customer_name'],'pending'=>$units];
+  $sources[]=['id'=>$id,'name'=>$o['customer_name'],'pending'=>$units,'items'=>$sourceItems];
  }
  foreach($retail as $id=>$qty) {
   $n=productionNumber($qty,100000);if(floor($n)!==$n)throw new InvalidArgumentException('마트 수량은 정수로 입력해 주세요.');if(!$n)continue;

@@ -85,3 +85,5 @@ function excelImportMenuHidden(): bool {return getenv('APP_HIDE_IMPORT_AFTER_COM
 require_once __DIR__.'/maps.php';
 
 require_once __DIR__.'/assets.php';
+
+require_once __DIR__.'/order-summary.php';

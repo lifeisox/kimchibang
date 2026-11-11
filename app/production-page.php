@@ -5,16 +5,19 @@ if($id&&!$plan){http_response_code(404);echo '<p>생산 계획을 찾을 수 없
 ?>
 <div class="toolbar no-print"><a class="button secondary" href="/?page=production-settings">주재료·배합 기준 관리</a><?php if($plan): ?><a class="button secondary" href="/?page=production">새 생산 계획</a><button class="button" id="print-order">생산 계획 인쇄</button><?php endif ?></div>
 <?php if($plan): $s=json_decode($plan['snapshot'],true,512,JSON_THROW_ON_ERROR); ?>
-<div class="production-print"><h2><?=e($plan['title'])?> · <?=e($plan['plan_date'])?></h2><p class="hint">계획 #<?=(int)$plan['id']?> · 주문 <?=count($s['orders'])?>건 · 배합 기준은 저장 당시 기준 · 표시량은 1g 단위 반올림</p>
+<div class="production-print"><h2><?=e($plan['title'])?> · <?=e($plan['plan_date'])?></h2>
 <?php if($s['warnings']): ?><div class="alert error">계산 제외: <?=e(implode(' / ',$s['warnings']))?>. 기준을 보완한 뒤 새 계획을 만드세요.</div><?php endif ?>
-<h3>생산 계획표</h3><p class="hint">주문분·마트판매분 각각 제품 종류별 합산입니다. 수량은 용량과 관계없이 포장 개수의 합계입니다.</p><div class="table-wrap"><table><thead><tr><th>구분</th><th>제품 종류</th><th>수량</th><th>생산량</th><th>배추</th><th>무우</th><th>절임소금</th><th>다른 주재료 / 확인</th></tr></thead><tbody>
+<h3>생산 계획표</h3><div class="table-wrap"><table><thead><tr><th>구분</th><th>제품 종류</th><th>수량</th><th>생산량</th><th>배추</th><th>무우</th><th>절임소금</th><th>다른 주재료 / 확인</th></tr></thead><tbody>
 <?php foreach(productionSummaryRows($s['rows']) as $r): ?><tr><td><?=e($r['channel'])?></td><td><?=e($r['name'])?></td><td><?=(int)$r['quantity']?>개</td><td><?=productionKg($r['grams'])?></td><?php foreach(['배추','무우','절임소금'] as $m): ?><td><?=isset($r['materials'][$m])?productionKg($r['materials'][$m]):'—'?></td><?php endforeach ?><td><?php if($r['incomplete']): ?>기준 확인 필요 <?php endif; if($r['materials']): foreach(array_diff_key($r['materials'],array_flip(['배추','무우','절임소금'])) as $m=>$g): ?><?=e($m)?> <?=productionKg($g)?> <?php endforeach;endif ?></td></tr><?php endforeach ?>
 </tbody></table></div>
 <p class="production-totals"><strong>전체 주재료 합계</strong> <?php foreach($s['totals'] as $m=>$g): ?><span><?=e($m)?> <strong><?=productionKg($g)?></strong></span> <?php endforeach ?></p>
 <h3>배추 절임계획</h3><div class="table-wrap"><table><thead><tr><th>절임 그룹</th><th>배추</th><th>무우</th><th>절임소금</th></tr></thead><tbody><?php foreach(['pogi'=>'포기김치 그룹','mat'=>'맛김치 그룹'] as $key=>$label): ?><tr><th><?=$label?></th><?php foreach(['배추','무우','절임소금'] as $m): ?><td><?=productionKg($s['groups'][$key][$m])?></td><?php endforeach ?></tr><?php endforeach ?></tbody></table></div>
-<p class="hint">포기 그룹: 포기·백포기·겉절이 / 맛 그룹: 맛·물·순한맛·비건·백김치. 주문분과 마트분을 합산합니다. 소금은 각 제품의 배추량과 배합률로 계산한 뒤 합산합니다. 동치미·깍두기·파김치는 위 전체 주재료 합계에만 포함됩니다.</p>
+
 <?php if($s['warnings']): ?><p class="production-warning">※ 미계산 제품이 있습니다: <?=e(implode(' / ',$s['warnings']))?></p><?php endif ?>
-</div><details class="panel no-print"><summary>선택한 주문 확인 · <?=count($s['orders'])?>건</summary><?php foreach($s['orders'] as $o): ?><p><a href="/?page=order&id=<?=(int)$o['id']?>">#<?=(int)$o['id']?> <?=e($o['name'])?></a> · 대기 <?=(int)$o['pending']?>개</p><?php endforeach ?></details>
+<section class="production-orders"><h3>선택한 주문 확인 · <?=count($s['orders'])?>건</h3>
+<?php $legacy=array_filter($s['orders'],fn($o)=>!array_key_exists('items',$o));$current=orderSummaries(array_column($legacy,'id')); ?>
+<?php if($legacy): ?><p class="hint">이전 계획에는 주문별 상세가 저장되지 않아 해당 내역은 현재 주문 기준으로 표시합니다. 생산량과 재료량은 저장 당시 기준입니다.</p><?php endif ?>
+<div class="production-order-list"><?php foreach($s['orders'] as $o): ?><article class="production-order-entry"><strong><a href="/?page=order&id=<?=(int)$o['id']?>">#<?=(int)$o['id']?> <?=e($o['name'])?></a></strong><?=orderItemBadges($o['items']??$current[$o['id']]??[])?></article><?php endforeach ?></div></section></div>
 <?php else:
 $orders=query('SELECT o.*,SUM(i.quantity-i.cancelled_quantity-i.delivered_quantity) remaining FROM orders o JOIN order_items i ON i.order_id=o.id WHERE o.cancelled=0 GROUP BY o.id HAVING remaining>0 ORDER BY o.delivery_date IS NULL,o.delivery_date,o.id')->fetchAll();$retail=query('SELECT * FROM production_retail WHERE active=1 ORDER BY id')->fetchAll();
 ?>
