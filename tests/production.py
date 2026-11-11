@@ -33,6 +33,7 @@ query("INSERT INTO customers (id,name,notes) VALUES (1,'생산 시험 고객',''
 foreach([1,2,3] as $id){query("INSERT INTO orders (id,request_key,customer_id,customer_name,delivery_address,order_date,delivery_date,fulfillment,subtotal_cents,total_cents,notes,created_by,paid) VALUES (?,?,1,'생산 시험 고객','','2026-01-01','2026-01-02','pickup',10000,10000,'',1,?)",[$id,bin2hex(random_bytes(16)),$id===1?1:0]);}
 $pid=query("SELECT id FROM products WHERE code='포5'")->fetchColumn();
 foreach([[1,4,1,1],[2,1,1,0],[3,1,0,1]] as [$oid,$qty,$sent,$cancel])query("INSERT INTO order_items (order_id,product_id,product_code,product_name,weight_g,unit_price_cents,quantity,delivered_quantity,cancelled_quantity) VALUES (?,?,'포5','포기김치',5000,5000,?,?,?)",[$oid,$pid,$qty,$sent,$cancel]);
+query("UPDATE orders SET delivery_address=? WHERE id=1",["123 Example Street, Ottawa"]);
 $p=productionSnapshot([1],['1'=>'1','2'=>'2']);check($p['rows'][0]['quantity']===2,'전달·취소 제외한 잔여수량만 생산');check(abs($p['groups']['pogi']['배추']-13110)<0.001,'주문 10kg+마트 포기3.8kg 배추 합산');check(abs($p['groups']['mat']['배추']-2784)<0.001,'마트 맛1.6kg 2개 환산');check(abs($p['groups']['pogi']['절임소금']-1245.45)<0.001,'절임소금은 계산된 배추량 기준');check($p['orders'][0]['pending']===2,'선입금 주문도 생산 선택 가능');
 try{productionSnapshot([2],[]);throw new RuntimeException('delivered accepted');}catch(InvalidArgumentException $e){echo "PASS 전달 완료 주문 차단\\n";}
 check((int)query('SELECT COUNT(*) FROM products')->fetchColumn()===14,'마트제품이 판매제품 목록에 섞이지 않음');
@@ -67,11 +68,12 @@ check((int)query('SELECT COUNT(*) FROM products')->fetchColumn()===14,'마트제
  spans=[span for page in pdf for block in page.get_text('dict')['blocks'] if 'lines' in block for line in block['lines'] for span in line['spans'] if span['text'].strip()]
  check(bool(spans) and min(s['size'] for s in spans)>=10.99,'생산 계획 인쇄 PDF 모든 글씨 최소 11pt')
  check('생산 시험 고객' in ''.join(page.get_text() for page in pdf),'인쇄 PDF에 선택 주문자 포함')
+ check('123 Example Street' in ''.join(page.get_text() for page in pdf),'인쇄 PDF에 배달지 주소 포함')
  # Exercise listings/pagination and customer totals with >30 records.
  app("""query("INSERT INTO customers (id,name,notes) VALUES (2,'주문없는고객','')");
 for($id=4;$id<=36;$id++) {query("INSERT INTO orders (id,request_key,customer_id,customer_name,delivery_address,order_date,delivery_date,fulfillment,subtotal_cents,total_cents,notes,created_by,cancelled) VALUES (?,?,1,'생산 시험 고객','','2026-01-01','2026-01-02','pickup',5000,5000,'',1,?)",[$id,bin2hex(random_bytes(16)),$id===36?1:0]);$pid=query("SELECT id FROM products WHERE code='맛10'")->fetchColumn();query("INSERT INTO order_items (order_id,product_id,product_code,product_name,weight_g,unit_price_cents,quantity) VALUES (?,?,'맛10','맛김치',10000,9000,1)",[$id,$pid]);}
 """)
- env['TEST_LEGACY_PLAN']=app('''$s=json_decode(query("SELECT snapshot FROM production_plans WHERE id=1")->fetchColumn(),true);foreach($s["orders"] as &$o)unset($o["items"]);unset($o);query("INSERT INTO production_plans (request_key,plan_date,title,snapshot,created_by) VALUES (?,?,?,?,1)",[bin2hex(random_bytes(16)),"2026-11-11","이전 계획 시험",json_encode($s)]);echo db()->lastInsertId();''').strip()
+ env['TEST_LEGACY_PLAN']=app('''query("UPDATE orders SET delivery_address=? WHERE id=1",["999 Updated Street, Ottawa"]);$s=json_decode(query("SELECT snapshot FROM production_plans WHERE id=1")->fetchColumn(),true);foreach($s["orders"] as &$o)unset($o["items"],$o["address"],$o["fulfillment"]);unset($o);query("INSERT INTO production_plans (request_key,plan_date,title,snapshot,created_by) VALUES (?,?,?,?,1)",[bin2hex(random_bytes(16)),"2026-11-11","이전 계획 시험",json_encode($s)]);echo db()->lastInsertId();''').strip()
  r=subprocess.run(['node','tests/browser-order-display.cjs'],cwd=ROOT,env=env,text=True,capture_output=True);print(r.stdout,flush=True)
  if r.returncode:raise RuntimeError(r.stderr)
  # Missing recipe is an expected business state, not a PHP 8.5 warning.

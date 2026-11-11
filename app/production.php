@@ -28,7 +28,7 @@ function productionSnapshot(array $ids,array $retail): array {
    $rows[$key]['quantity']+=$n;
   }
   if(!$units)throw new InvalidArgumentException('이미 모두 전달한 주문이 있습니다. 목록을 새로고침해 주세요.');
-  $sources[]=['id'=>$id,'name'=>$o['customer_name'],'pending'=>$units,'items'=>$sourceItems];
+  $sources[]=['id'=>$id,'name'=>$o['customer_name'],'pending'=>$units,'items'=>$sourceItems,'address'=>$o['delivery_address'],'fulfillment'=>$o['fulfillment']];
  }
  foreach($retail as $id=>$qty) {
   $n=productionNumber($qty,100000);if(floor($n)!==$n)throw new InvalidArgumentException('마트 수량은 정수로 입력해 주세요.');if(!$n)continue;

@@ -15,9 +15,16 @@ if($id&&!$plan){http_response_code(404);echo '<p>생산 계획을 찾을 수 없
 
 <?php if($s['warnings']): ?><p class="production-warning">※ 미계산 제품이 있습니다: <?=e(implode(' / ',$s['warnings']))?></p><?php endif ?>
 <section class="production-orders"><h3>선택한 주문 확인 · <?=count($s['orders'])?>건</h3>
-<?php $legacy=array_filter($s['orders'],fn($o)=>!array_key_exists('items',$o));$current=orderSummaries(array_column($legacy,'id')); ?>
-<?php if($legacy): ?><p class="hint">이전 계획에는 주문별 상세가 저장되지 않아 해당 내역은 현재 주문 기준으로 표시합니다. 생산량과 재료량은 저장 당시 기준입니다.</p><?php endif ?>
-<div class="production-order-list"><?php foreach($s['orders'] as $o): ?><article class="production-order-entry"><strong><a href="/?page=order&id=<?=(int)$o['id']?>">#<?=(int)$o['id']?> <?=e($o['name'])?></a></strong><?=orderItemBadges($o['items']??$current[$o['id']]??[])?></article><?php endforeach ?></div></section></div>
+<?php
+$legacy=array_filter($s['orders'],fn($o)=>!array_key_exists('items',$o));$current=orderSummaries(array_column($legacy,'id'));
+$missingAddresses=array_filter($s['orders'],fn($o)=>!array_key_exists('address',$o));$addresses=[];
+if($missingAddresses){$addressIds=array_column($missingAddresses,'id');$addresses=query('SELECT id,delivery_address,fulfillment FROM orders WHERE id IN ('.implode(',',array_fill(0,count($addressIds),'?')).')',$addressIds)->fetchAll(PDO::FETCH_UNIQUE);}
+?>
+<?php if($legacy||$missingAddresses): ?><p class="hint">이전 계획에 저장되지 않은 주소·제품내역은 현재 주문 기준으로 표시합니다. 생산량과 재료량은 저장 당시 기준입니다.</p><?php endif ?>
+<div class="production-order-list"><table class="production-order-table"><colgroup><col class="production-person-col"><col class="production-address-col"><col></colgroup><thead><tr><th>성명</th><th>배달지 주소</th><th>주문내역</th></tr></thead><tbody>
+<?php foreach($s['orders'] as $o): $address=$o['address']??$addresses[$o['id']]['delivery_address']??'';$method=$o['fulfillment']??$addresses[$o['id']]['fulfillment']??'unknown'; ?>
+<tr class="production-order-entry"><td><strong><a href="/?page=order&id=<?=(int)$o['id']?>" title="주문 #<?=(int)$o['id']?>"><?=e($o['name'])?></a></strong></td><td class="production-order-address"><?=e($address!==''?$address:(in_array($method,['pickup','church'],true)?fulfillmentLabel($method):'주소 미기록'))?></td><td><?=orderItemBadges($o['items']??$current[$o['id']]??[])?></td></tr>
+<?php endforeach ?></tbody></table></div></section></div>
 <?php else:
 $orders=query('SELECT o.*,SUM(i.quantity-i.cancelled_quantity-i.delivered_quantity) remaining FROM orders o JOIN order_items i ON i.order_id=o.id WHERE o.cancelled=0 GROUP BY o.id HAVING remaining>0 ORDER BY o.delivery_date IS NULL,o.delivery_date,o.id')->fetchAll();$retail=query('SELECT * FROM production_retail WHERE active=1 ORDER BY id')->fetchAll();
 ?>
