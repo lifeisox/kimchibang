@@ -8,7 +8,7 @@ if (PHP_SAPI !== 'cli') {
     session_start();
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
-    header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; style-src 'self'; img-src 'self' data: blob:; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
     header('Cache-Control: no-store');
 }
 function db(): PDO {
@@ -87,3 +87,4 @@ require_once __DIR__.'/maps.php';
 require_once __DIR__.'/assets.php';
 
 require_once __DIR__.'/order-summary.php';
+require_once __DIR__.'/navigation.php';

@@ -90,3 +90,7 @@ NODE_PATH=/workspace/browser-check/node_modules node tests/browser-workflow.cjs
 셀폰 미리보기는 Chrome/Edge의 F12 → Ctrl+Shift+M으로 엽니다. 390×844 등 화면 크기를 선택할 수 있습니다. 실제 셀폰은 필요하지 않습니다. [계정·모바일 안내](docs/CUSTOMER_SETTINGS.md)를 참고하세요. 사이드바 로고는 102px로 줄였습니다.
 
 추가 검증: `python tests/customer-import.py`, `python tests/import-replace.py`, `python tests/accounts.py`, `NODE_PATH=/workspace/browser-check/node_modules node tests/browser-mobile.cjs`. 전체 교체·오류 롤백·복원·계정/제품 설정 유지 시험은 별도 DB에서만 실행하며 현재 업무 DB를 초기화하지 않습니다.
+
+## 비용·영수증 / 최신 업무 화면
+
+[비용·영수증 안내](docs/EXPENSES.md)에 사진 OCR·PDF 읽기·직접 입력·연도별 비용 엑셀 가져오기·신고 준비 집계를 정리했습니다. 모든 문서 읽기는 기기 안에서 수행하고 저장 전 확인합니다. 기존 주문/고객 가져오기와 별개이며 실제 비용·영수증은 Git에 저장하지 않습니다. 메뉴 밀도와 아이콘·주문 우선순위·재료 구입량 즉시 계산·최근3년 비교도 추가했습니다. Hostinger에는 검토 후 별도 업데이트해야 합니다.

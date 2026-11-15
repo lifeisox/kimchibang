@@ -19,12 +19,14 @@ with ZipFile(out,'w',ZIP_DEFLATED) as z:
     z.write(root/'public/favicon.ico','public_html/kimchibang/favicon.ico')
     z.writestr('public_html/kimchibang/.htaccess','''Options -Indexes
 DirectoryIndex index.php
+AddType application/javascript .mjs
+AddType application/wasm .wasm
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://k.ottawakfood.com%{REQUEST_URI} [R=302,L]
 RewriteRule ^(?:index\\.php)?$ - [L]
 RewriteRule ^favicon\\.ico$ - [L]
-RewriteRule ^assets/[A-Za-z0-9_./-]+\\.(?:css|js|png|ico|svg|webp|jpg|jpeg)$ - [L,NC]
+RewriteRule ^assets/[A-Za-z0-9_./-]+\\.(?:css|js|mjs|wasm|traineddata|png|ico|svg|webp|jpg|jpeg)$ - [L,NC]
 RewriteRule ^ - [F,L]
 ''')
     z.writestr('public_html/kimchibang/.user.ini','display_errors=Off\nlog_errors=On\nexpose_php=Off\nupload_max_filesize=10M\npost_max_size=12M\n')

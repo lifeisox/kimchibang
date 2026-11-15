@@ -3,7 +3,7 @@ require_once __DIR__.'/production.php';
 $id=(int)($_GET['id']??0);$plan=$id?query('SELECT * FROM production_plans WHERE id=?',[$id])->fetch():false;
 if($id&&!$plan){http_response_code(404);echo '<p>생산 계획을 찾을 수 없습니다.</p>';return;}
 ?>
-<div class="toolbar no-print"><a class="button secondary" href="/?page=production-settings">주재료·배합 기준 관리</a><?php if($plan): ?><a class="button secondary" href="/?page=production">새 생산 계획</a><button class="button" id="print-order">생산 계획 인쇄</button><?php endif ?></div>
+<div class="toolbar no-print"><a class="button secondary" href="/?page=production-settings">주재료·배합 기준 관리</a><a class="button secondary" href="/?page=material-calculator">재료 구입량 계산하기</a><?php if($plan): ?><a class="button secondary" href="/?page=production">새 생산 계획</a><button class="button" id="print-order">생산 계획 인쇄</button><?php endif ?></div>
 <?php if($plan): $s=json_decode($plan['snapshot'],true,512,JSON_THROW_ON_ERROR); ?>
 <div class="production-print"><h2><?=e($plan['title'])?> · <?=e($plan['plan_date'])?></h2>
 <?php if($s['warnings']): ?><div class="alert error">계산 제외: <?=e(implode(' / ',$s['warnings']))?>. 기준을 보완한 뒤 새 계획을 만드세요.</div><?php endif ?>

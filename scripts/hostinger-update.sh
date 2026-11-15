@@ -33,6 +33,11 @@ php scripts/apply-cloud-update.php
 cp "$release_root/public/index.php" "$installed/public/index.php"
 cp -R "$release_web/assets/." "$web_root/assets/"
 cp "$release_web/favicon.ico" "$web_root/favicon.ico"
+# Public OCR/PDF assets need explicit extensions while private paths remain denied.
+php -r '$p=$argv[1];$s=file_get_contents($p);$s=str_replace(["css|js|png|ico|svg|webp|jpg|jpeg","css|js|mjs|wasm|gz|png|ico|svg|webp|jpg|jpeg"],"css|js|mjs|wasm|traineddata|png|ico|svg|webp|jpg|jpeg",$s);if(!str_contains($s,"AddType application/javascript .mjs"))$s.="\nAddType application/javascript .mjs\nAddType application/wasm .wasm\n";if(file_put_contents($p,$s)===false)exit(1);' "$web_root/.htaccess"
+find "$web_root/assets" -type d -exec chmod 755 {} \;
+find "$web_root/assets" -type f -exec chmod 644 {} \;
+
 php scripts/hostinger-check.php
 echo 'Hostinger 코드·생산 테이블 업데이트 완료. 브라우저에서 Ctrl+F5 후 생산 계획을 확인하세요.'
 echo '엑셀을 다시 가져오지 마세요. 기존 고객·주문·계정·로고·설정은 유지합니다.'

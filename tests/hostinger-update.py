@@ -23,13 +23,13 @@ try:
  (app/'config/local.php').write_bytes(settings)
  (app/'.local/branding').mkdir(parents=True);(app/'.local/branding/logo.png').write_bytes(b'private-logo-fixture')
  init=app/'scripts/init.php';init.write_text(init.read_text().replace("require __DIR__.'/../database/production.php';",''))
- htaccess=domain/'public_html/kimchibang/.htaccess';htaccess.write_text(htaccess.read_text()+'\n# existing host setting\n');oldht=htaccess.read_bytes()
+ htaccess=domain/'public_html/kimchibang/.htaccess';htaccess.write_text(htaccess.read_text().replace('css|js|mjs|wasm|traineddata|png|ico|svg|webp|jpg|jpeg','css|js|png|ico|svg|webp|jpg|jpeg').replace('AddType application/javascript .mjs\n','').replace('AddType application/wasm .wasm\n','')+'\n# existing host setting\n')
  prefix='/app/'+work.relative_to(ROOT).as_posix()
  output=command(['exec','-T','-e','DB_NAME='+name,'-e','APP_SECURE_COOKIE=1','web','sh',prefix+'/stage/kimchibang/scripts/hostinger-update.sh',prefix+'/domain'])
  assert '업데이트 완료 · 기존 고객 1명 / 주문 1건 보존' in output and 'Hostinger 코드·생산 테이블 업데이트 완료' in output
  assert (app/'config/local.php').read_bytes()==settings
  assert (app/'.local/branding/logo.png').read_bytes()==b'private-logo-fixture'
- assert htaccess.read_bytes()==oldht
+ assert '# existing host setting' in htaccess.read_text() and 'mjs|wasm|traineddata' in htaccess.read_text() and 'AddType application/javascript .mjs' in htaccess.read_text() and 'RewriteRule ^ - [F,L]' in htaccess.read_text()
  assert (app/'public/index.php').read_bytes()==(ROOT/'public/index.php').read_bytes()
  assert (domain/'public_html/kimchibang/assets/app.js').read_bytes()==(ROOT/'public/assets/app.js').read_bytes()
  assert list((app/'.local').glob('code-before-update-*.tar.gz'))

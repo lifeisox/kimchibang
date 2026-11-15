@@ -1,6 +1,9 @@
 <?php
 function pv(string $key,string $default=''): string {return is_string($_POST[$key]??null)?$_POST[$key]:$default;}
 if($page==='accounts'): require __DIR__.'/accounts-page.php';
+elseif($page==='material-calculator'): require __DIR__.'/material-calculator.php';
+elseif($page==='expense-import'): require __DIR__.'/expense-import-page.php';
+elseif(in_array($page,['expenses','expense-edit','expense-report'],true)): require __DIR__.'/expenses-page.php';
 elseif($page==='production'): require __DIR__.'/production-page.php';
 elseif($page==='production-settings'): require __DIR__.'/production-settings.php';
 elseif($page==='brand'): require __DIR__.'/brand-page.php';
@@ -36,7 +39,7 @@ elseif($page==='home'):
  $count=(int)query('SELECT COUNT(*) FROM orders'.$sql,$args)->fetchColumn();
  $num=max(1,(int)($_GET['p']??1)); $offset=($num-1)*30;
 ?>
-<div class="toolbar"><form method="get" class="inline-form"><input type="hidden" name="page" value="orders"><input name="q" value="<?=e($term)?>" placeholder="고객 이름으로 주문 찾기" aria-label="고객 이름"><select name="filter" aria-label="처리 상태"><option value="">전체 주문</option><option value="cancelled" <?=$filter==='cancelled'?'selected':''?>>취소한 주문</option><option value="unpaid" <?=$filter==='unpaid'?'selected':''?>>입금 전</option><option value="waiting" <?=$filter==='waiting'?'selected':''?>>전달 전</option></select><button class="button secondary">찾기</button></form><a class="button" href="/?page=new-order">＋ 새 주문 넣기</a></div><section class="panel"><div class="section-title"><h2>주문 <?=number_format($count)?>건</h2><span>최근 주문부터 표시</span></div><?php orderTable(query('SELECT * FROM orders'.$sql.' ORDER BY order_date DESC,id DESC LIMIT 30 OFFSET '.$offset,$args)->fetchAll()); ?><div class="pagination"><?php if($num>1): ?><a href="?<?=e(http_build_query(['page'=>'orders','q'=>$term,'filter'=>$filter,'p'=>$num-1]))?>">← 이전</a><?php endif ?> <span><?=$num?> 페이지</span> <?php if($offset+30<$count): ?><a href="?<?=e(http_build_query(['page'=>'orders','q'=>$term,'filter'=>$filter,'p'=>$num+1]))?>">다음 →</a><?php endif ?></div></section>
+<div class="toolbar"><form method="get" class="inline-form"><input type="hidden" name="page" value="orders"><input name="q" value="<?=e($term)?>" placeholder="고객 이름으로 주문 찾기" aria-label="고객 이름"><select name="filter" aria-label="처리 상태"><option value="">전체 주문</option><option value="cancelled" <?=$filter==='cancelled'?'selected':''?>>취소한 주문</option><option value="unpaid" <?=$filter==='unpaid'?'selected':''?>>입금 전</option><option value="waiting" <?=$filter==='waiting'?'selected':''?>>전달 전</option></select><button class="button secondary">찾기</button></form><a class="button" href="/?page=new-order">＋ 새 주문 넣기</a></div><section class="panel"><div class="section-title"><h2>주문 <?=number_format($count)?>건</h2><span>미전달·미입금 → 전달·미입금 → 선입금·미전달 → 완료 · 각 그룹 최근순</span></div><?php orderTable(query('SELECT * FROM orders'.$sql.' ORDER BY CASE WHEN cancelled=0 AND delivered=0 AND paid=0 THEN 0 WHEN cancelled=0 AND delivered=1 AND paid=0 THEN 1 WHEN cancelled=0 AND delivered=0 THEN 2 ELSE 3 END,order_date DESC,id DESC LIMIT 30 OFFSET '.$offset,$args)->fetchAll()); ?><div class="pagination"><?php if($num>1): ?><a href="?<?=e(http_build_query(['page'=>'orders','q'=>$term,'filter'=>$filter,'p'=>$num-1]))?>">← 이전</a><?php endif ?> <span><?=$num?> 페이지</span> <?php if($offset+30<$count): ?><a href="?<?=e(http_build_query(['page'=>'orders','q'=>$term,'filter'=>$filter,'p'=>$num+1]))?>">다음 →</a><?php endif ?></div></section>
 <?php elseif($page==='order'): require __DIR__.'/order-detail.php'; ?>
 <?php elseif($page==='order-edit'): require __DIR__.'/order-edit.php'; ?>
 <?php elseif($page==='customers'):

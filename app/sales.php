@@ -18,3 +18,12 @@ function salesProducts(string $start,string $end): array {
 function salesReceipts(string $start,string $end): array {
     return array_map('intval',query('SELECT COALESCE(SUM(p.amount_cents),0) amount,COALESCE(SUM(p.additional_income_cents),0) additional_income,COUNT(*) receipt_count FROM payments p JOIN orders o ON o.id=p.order_id WHERE o.cancelled=0 AND p.paid_on BETWEEN ? AND ?',[$start,$end])->fetch());
 }
+
+function salesThreeYears(string $kind,int $year): array {
+ if(!in_array($kind,['week','month','year'],true)||$year<1902||$year>9999)throw new InvalidArgumentException('비교 기간을 확인해 주세요.');
+ $count=$kind==='week'?52:($kind==='month'?12:1);$rows=[];$totals=[$year=>0,$year-1=>0,$year-2=>0];
+ for($i=1;$i<=$count;$i++)$rows[$i]=['label'=>$kind==='week'?$i.'주':($kind==='month'?$i.'월':'연간'),'amounts'=>array_fill_keys(array_keys($totals),0)];
+ foreach(array_keys($totals) as $y){$daily=query('SELECT order_date,SUM(subtotal_cents-discount_cents) amount FROM orders WHERE cancelled=0 AND order_date BETWEEN ? AND ? GROUP BY order_date',[$y.'-01-01',$y.'-12-31'])->fetchAll();foreach($daily as $d){$date=new DateTimeImmutable($d['order_date']);$i=$kind==='week'?min(52,intdiv((int)$date->format('z'),7)+1):($kind==='month'?(int)$date->format('n'):1);$rows[$i]['amounts'][$y]+=(int)$d['amount'];$totals[$y]+=(int)$d['amount'];}}
+ return ['year'=>$year,'rows'=>$rows,'totals'=>$totals];
+}
+function salesGrowth(int $now,int $before): string {return $before===0?'—':number_format(($now-$before)/$before*100,1).'%';}

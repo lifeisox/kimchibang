@@ -25,12 +25,14 @@ try {
     $zip->addFromString($web.'.htaccess',<<<'HTACCESS'
 Options -Indexes
 DirectoryIndex index.php
+AddType application/javascript .mjs
+AddType application/wasm .wasm
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://k.ottawakfood.com%{REQUEST_URI} [R=302,L]
 RewriteRule ^(?:index\.php)?$ - [L]
 RewriteRule ^favicon\.ico$ - [L]
-RewriteRule ^assets/[A-Za-z0-9_./-]+\.(?:css|js|png|ico|svg|webp|jpg|jpeg)$ - [L,NC]
+RewriteRule ^assets/[A-Za-z0-9_./-]+\.(?:css|js|mjs|wasm|traineddata|png|ico|svg|webp|jpg|jpeg)$ - [L,NC]
 RewriteRule ^ - [F,L]
 
 HTACCESS);

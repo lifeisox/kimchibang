@@ -60,6 +60,8 @@ function handleAction(): never {
     }
     databaseWriteLock();
     if(in_array($action,['account_create','account_password'],true)){require_once __DIR__.'/accounts.php';accountAction($action);}
+    if(in_array($action,['expense_import_preview','expense_import_execute'],true)){require_once __DIR__.'/expense-import.php';expenseImportAction();}
+    if(in_array($action,['expense_save','expense_void'],true)){require_once __DIR__.'/expenses.php';expenseAction();}
     if($action==='brand_upload'){require_once __DIR__.'/branding.php';saveBrandLogo($_FILES['brand_file']??[]);$_SESSION['flash']='원본 브랜드 로고를 적용했습니다.';redirect('/?page=brand');}
     if($action==='customer') {
         $kind=$_POST['customer_kind']??'person';if(!in_array($kind,['person','organization'],true))throw new InvalidArgumentException('고객 종류를 확인해 주세요.');

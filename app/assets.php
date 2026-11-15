@@ -1,7 +1,7 @@
 <?php
 // A new CSS/JS body gets a new URL so browser/CDN caches cannot reuse an older release.
 function assetUrl(string $name): string {
-    if(!in_array($name,['style.css','app.js'],true))throw new InvalidArgumentException('지원하지 않는 정적 파일입니다.');
+    if(!in_array($name,['style.css','app.js','receipt-reader.js'],true))throw new InvalidArgumentException('지원하지 않는 정적 파일입니다.');
     $root=$_SERVER['DOCUMENT_ROOT']??'';
     if(!is_string($root)||$root==='')$root=dirname(__DIR__).'/public';
     $file=rtrim($root,'/').'/assets/'.$name;
