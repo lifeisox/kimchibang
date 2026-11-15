@@ -7,3 +7,5 @@ __pycache__/
 
 /config/local.php
 /dist/
+
+/config/release.php

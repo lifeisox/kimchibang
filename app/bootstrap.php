@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/config.php';
+require_once __DIR__.'/features.php';
 date_default_timezone_set('America/Toronto');
 if (PHP_SAPI !== 'cli') {
     ini_set('session.use_strict_mode', '1');
@@ -8,7 +9,8 @@ if (PHP_SAPI !== 'cli') {
     session_start();
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; style-src 'self'; img-src 'self' data: blob:; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+    $readerPolicy=expensesEnabled()?"script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; img-src 'self' data: blob:;":"script-src 'self'; img-src 'self' data:;";
+    header("Content-Security-Policy: default-src 'self'; ".$readerPolicy." style-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
     header('Cache-Control: no-store');
 }
 function db(): PDO {

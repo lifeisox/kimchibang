@@ -1,6 +1,7 @@
 <?php
 function handleAction(): never {
     $action=$_POST['action']??'';
+    if(is_string($action)&&str_starts_with($action,'expense_')&&!expensesEnabled())throw new InvalidArgumentException('비용·영수증 기능은 현재 보류 중입니다.');
     if (!is_string($_POST['csrf']??null) || !hash_equals($_SESSION['csrf']??'',$_POST['csrf'])) throw new InvalidArgumentException('화면이 만료되었습니다. 새로고침 후 다시 시도해 주세요.');
     if($action==='initial_setup') {require_once __DIR__.'/setup.php';initialSetupAction();}
     if($action==='login') {

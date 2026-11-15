@@ -10,7 +10,7 @@ def cmd(args,data=None):
  if r.returncode:raise RuntimeError((r.stderr or r.stdout)[-2400:])
  return r.stdout
 def admin(sql):return cmd(['exec','-T','db','sh','-c','MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -u root'],sql)
-def app(code):return cmd(['exec','-T','-e','DB_NAME='+name,'web','php'],'<?php require "app/bootstrap.php";'+code)
+def app(code):return cmd(['exec','-T','-e','APP_ENABLE_EXPENSES=1','-e','DB_NAME='+name,'web','php'],'<?php require "app/bootstrap.php";'+code)
 def req(path='/',data=None):
  try:
   with client.open(base+path,urllib.parse.urlencode(data,doseq=True).encode() if data is not None else None) as r:return r.status,r.read().decode(),r.url
@@ -21,7 +21,7 @@ def check(ok,label):
  print('PASS',label,flush=True)
 try:
  admin('CREATE DATABASE '+name+' CHARACTER SET utf8mb4; GRANT ALL ON '+name+".* TO 'kimchi'@'%';")
- cmd(['exec','-T','-e','DB_NAME='+name,'web','php','scripts/init.php'])
+ cmd(['exec','-T','-e','APP_ENABLE_EXPENSES=1','-e','DB_NAME='+name,'web','php','scripts/init.php'])
  print(app('''require 'app/sales.php';require 'app/expenses.php';
 function check($v,$label){if(!$v)throw new RuntimeException($label);echo "PASS $label\\n";}
 query('INSERT INTO users (username,password_hash) VALUES (?,?)',['admin',password_hash('fixture-password-123',PASSWORD_DEFAULT)]);query("INSERT INTO customers (id,name,notes) VALUES (1,'시험 고객','')");
@@ -29,7 +29,7 @@ foreach([[1,'2026-01-01',0,0,10000],[2,'2026-02-01',1,0,10000],[3,'2026-03-01',0
 foreach(['week'=>52,'month'=>12,'year'=>1] as $kind=>$count){$r=salesThreeYears($kind,2026);check(count($r['rows'])===$count,'최근3년 '.$kind.' 행 수');check($r['totals']===[2026=>40000,2025=>20000,2024=>40000],'3개 연도 합계');check(array_sum(array_map(fn($x)=>$x['amounts'][2026],$r['rows']))===40000,'연말 포함 세부 합계');}
 check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·0기준 처리');check(array_sum(expenseAllocate(113,[50,50]))===113,'분할 센트 보존');
 '''))
- container=cmd(['run','--rm','-d','--no-deps','-p','127.0.0.1:18092:8000','-e','DB_NAME='+name,'-e','APP_SECURE_COOKIE=0','web']).strip()
+ container=cmd(['run','--rm','-d','--no-deps','-p','127.0.0.1:18092:8000','-e','DB_NAME='+name,'-e','APP_SECURE_COOKIE=0','-e','APP_ENABLE_EXPENSES=1','web']).strip()
  for _ in range(50):
   try:_,html,_=req();break
   except (OSError,urllib.error.URLError):time.sleep(.2)

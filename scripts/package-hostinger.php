@@ -9,17 +9,18 @@ try {
     $zip=new PharData($temp,0,null,Phar::ZIP);
     foreach(['app','database'] as $folder) {
         foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.$folder,FilesystemIterator::SKIP_DOTS)) as $file) {
-            if($file->isFile()&&!$file->isLink()&&$file->getExtension()==='php') {
+            if($file->isFile()&&!$file->isLink()&&$file->getExtension()==='php'&&!str_starts_with($file->getFilename(),'expense')) {
                 $relative=substr($file->getPathname(),strlen($root)+1);
                 $zip->addFile($file->getPathname(),'kimchibang/'.$relative);
             }
         }
     }
     foreach(['database/schema.sql','config/excel-decisions.json','config/hostinger.example.php','public/index.php','scripts/init.php','scripts/create-user.php','scripts/hostinger-check.php','scripts/apply-cloud-update.php','scripts/restore-import.php','scripts/hostinger-update.sh'] as $file)$zip->addFile($root.'/'.$file,'kimchibang/'.$file);
+    $zip->addFromString('kimchibang/config/release.php',"<?php\nreturn ['edition'=>'sales','expenses'=>false];\n");
     $web='public_html/kimchibang/';
     $zip->addFromString($web.'index.php',"<?php\nrequire __DIR__.'/../../kimchibang/public/index.php';\n");
     foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/public/assets',FilesystemIterator::SKIP_DOTS)) as $file) {
-        if($file->isFile()&&!$file->isLink())$zip->addFile($file->getPathname(),$web.'assets/'.substr($file->getPathname(),strlen($root.'/public/assets/')));
+        if($file->isFile()&&!$file->isLink()&&!str_contains($file->getPathname(),'/vendor/')&&$file->getFilename()!=='receipt-reader.js')$zip->addFile($file->getPathname(),$web.'assets/'.substr($file->getPathname(),strlen($root.'/public/assets/')));
     }
     $zip->addFile($root.'/public/favicon.ico',$web.'favicon.ico');
     $zip->addFromString($web.'.htaccess',<<<'HTACCESS'

@@ -7,4 +7,4 @@ $order=array_flip(['포10','포5','맛10','맛5','깍','파','겉','물','물백
 foreach($products as $p) query('INSERT INTO products (code,name,weight_g,price_cents,sort_order) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE id=id',[...$p,$order[$p[0]]+1]);
 echo "DB와 초기 제품 준비 완료 (기존 가격 보존)\n";
 require __DIR__.'/../database/production.php';
-require __DIR__.'/../database/expenses.php';
+if(expensesEnabled())require __DIR__.'/../database/expenses.php';

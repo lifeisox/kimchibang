@@ -26,6 +26,7 @@ tar -czf "$backup" -C "$domain_root" kimchibang/app kimchibang/database kimchiba
 chmod 600 "$backup"
 echo "기존 코드 백업: $backup"
 # Copy allowlisted code only. Keep .local, config/local.php, logo, accounts and sales data.
+cp "$release_root/config/release.php" "$installed/config/release.php"
 cp -R "$release_root/database/." "$installed/database/"
 cp -R "$release_root/scripts/." "$installed/scripts/"
 cp -R "$release_root/app/." "$installed/app/"
