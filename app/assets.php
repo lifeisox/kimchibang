@@ -7,6 +7,6 @@ function assetUrl(string $name): string {
     $file=rtrim($root,'/').'/assets/'.$name;
     // Hostinger serves assets from its public document root, separate from the private app.
     $hash=is_file($file)&&is_readable($file)?hash_file('sha256',$file):false;
-    if($name==='receipt-reader.js'&&$hash!==false){$parser=rtrim($root,'/').'/assets/receipt-parser.mjs';if(is_file($parser))$hash=hash('sha256',$hash.hash_file('sha256',$parser));}
+    if($name==='receipt-reader.js'&&$hash!==false){foreach(['receipt-parser.mjs','receipt-imaging.mjs'] as $module){$parser=rtrim($root,'/').'/assets/'.$module;if(is_file($parser))$hash=hash('sha256',$hash.hash_file('sha256',$parser));}}
     return '/assets/'.$name.'?v='.($hash===false?'missing':substr($hash,0,16));
 }

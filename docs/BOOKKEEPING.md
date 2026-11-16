@@ -42,3 +42,11 @@ DB 백업과 `.local/receipts/`, `.local/expense-imports/`를 함께 안전하�
 ## 검증
 
 `node tests/receipt-parser.mjs`, `python tests/finance.py`로 계산·보안·신규 엑셀·구매처/Account 관리·사진 OCR·텍스트/스캔 PDF·모바일 화면·인쇄를 검증합니다. 운영 판매 패키지는 `tests/sales-release.py`, `tests/hostinger-package.py`로 기장 기능이 제외되는지 확인합니다.
+
+## 영수증 읽기 개선 (2026-11-16)
+
+사진의 밝은 종이 영역을 찾아 불필요한 배경을 줄이고 네 방향에서 읽어 봅니다. 원본·밝기 보정본을 비교하여 Amount/HST/Date를 더 잘 찾은 후보를 표시합니다. 이는 OCR의 정답 확률이 아니므로 반드시 증빙과 대조합니다. 배경과 종이가 비슷하거나 여러 영수증이 겹치면 분리되지 않을 수 있습니다. 한 사진에 영수증 한 장만 넣고, 방향·조명·초점을 맞춰 촬영하면 정확도가 좋아집니다. 자동 처리로 원본 사진은 변경하지 않습니다.
+
+Costco 주유의 Fuel Sale/Amount due/HST Included와 식료품의 명시적 Tax 0을 읽습니다. 세금이 표시되지 않은 OK Mart/Green Fresh 사진은 품목 가격만으로 HST 0을 추정하지 않습니다. Amazon Canada PDF는 Invoice date를 우선하고 마지막 페이지 Federal/Provincial Tax 합계 행을 검산합니다. 구매한 물품이 사업용인지 여부는 영수증 인식으로 결정하지 않습니다.
+
+시험은 전사한 4개 매장 영수증의 필드 규칙, 합성 회전 사진의 실제 브라우저 OCR, 첨부 Amazon PDF의 실제 PDF.js 추출로 구분합니다. 전사한 텍스트 시험을 실제 사진 전체의 OCR 정확도로 해석하지 않습니다. 사진 원본은 이번 작업 파일시스템에 제공되지 않았으며 채팅에 표시된 사진을 시각적으로 확인했습니다. 실제 인보이스는 비공개 파일로만 시험하며 Git에 넣지 않습니다. 선택 시험: `TEST_INVOICE=/비공개/invoice.pdf NODE_PATH=/설치경로/node_modules node tests/browser-invoice.cjs`.
