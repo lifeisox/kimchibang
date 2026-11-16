@@ -35,18 +35,33 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
   except (OSError,urllib.error.URLError):time.sleep(.2)
  check(req('/?api=expense-receipt&id=1')[0]==401,'로그인 전 영수증 접근 차단')
  _,html,_=req(data={'action':'login','csrf':token(html),'username':'admin','password':'fixture-password-123'});csrf=token(html)
- category=app('echo query("SELECT id FROM expense_categories WHERE name=?",["재료 구입"])->fetchColumn();').strip()
+ category=app('echo query("SELECT id FROM expense_categories WHERE name=?",["Supplies"])->fetchColumn();').strip()
  data={'action':'expense_save','csrf':csrf,'request_key':uuid.uuid4().hex,'expense_date':'2026-01-02','vendor':'가상 구입처','category_id':category,'description':'fixture','subtotal':'100.00','hst':'13.00','other_tax':'0','total':'113.00','business_pct':'50','deductible_pct':'100','itc_status':'eligible','ocr_text':''}
  status,html,url=req('/?page=expense-edit',data);check(status==200 and '비용과 영수증을 저장했습니다' in html,'비용 입력 저장');eid=int(re.search(r'&id=(\d+)',url)[1])
  req('/?page=expense-edit',data);check(app('echo query("SELECT COUNT(*) FROM expenses")->fetchColumn();').strip()=='1','비용 중복 제출 방지')
  report=json.loads(app('require "app/expenses.php";echo json_encode(expenseReport(2026)["totals"]);'));check(report['paid']==11300 and report['itc']==650 and report['operating']==5000,'사업분50%·확인된 HST만 공제·운영비 집계')
  wrong=dict(data,request_key=uuid.uuid4().hex,total='114');check(req('/?page=expense-edit',wrong)[0]==422,'공급가·세금·합계 불일치 저장 차단')
  check(req('/?page=expense-edit',dict(data,csrf='bad'))[0]==422,'비용 CSRF 보호')
+ # Supplier aliases, management and account defaults are checked through the same authenticated routes.
+ print(app("""require 'app/bookkeeping.php';db()->beginTransaction();$a=supplierResolve('Costco Business Center');$b=supplierResolve('Costco Merivale');$c=supplierResolve('Costco Strandherd');if($a['id']!==$b['id']||$a['id']!==$c['id'])throw new RuntimeException('Costco normalization');db()->commit();echo 'PASS Costco 3개 지점 동일 구매처 연결';"""))
+ status,html,_=req('/?page=bookkeeping-suppliers',{'action':'supplier_save','csrf':csrf,'id':0,'name':'Fixture Supplier','aliases':'Fixture Branch'})
+ check(status==200 and 'Fixture Supplier' in html,'구매처 추가·별칭 등록')
+ sid=app('echo query("SELECT id FROM bookkeeping_suppliers WHERE name=?",["Fixture Supplier"])->fetchColumn();').strip()
+ target=app('echo query("SELECT id FROM bookkeeping_suppliers WHERE name=?",["Costco"])->fetchColumn();').strip()
+ status,html,_=req('/?page=bookkeeping-suppliers',{'action':'supplier_merge','csrf':csrf,'id':sid,'version':1,'target_id':target})
+ check(status==200 and app('require "app/bookkeeping.php";echo supplierResolve("Fixture Branch")["id"];').strip()==target,'구매처 통합 후 별칭 유지')
+ status,html,_=req('/?page=bookkeeping-accounts',{'action':'accounting_save','csrf':csrf,'id':0,'name':'Fixture Account','tax_type':'operating','default_deductible_pct':75,'default_itc_pct':50,'sort_order':999,'income_tax_line':'Review'})
+ check(status==200 and 'Fixture Account' in html,'Chart of Accounts 추가·기본 비율 저장')
+ aid=app('echo query("SELECT id FROM expense_categories WHERE name=?",["Fixture Account"])->fetchColumn();').strip()
+ check(req('/?page=bookkeeping-accounts',{'action':'accounting_delete','csrf':csrf,'id':aid,'version':1})[0]==200 and app('echo query("SELECT active FROM expense_categories WHERE id=?",['+aid+'])->fetchColumn();').strip()=='0','Account 삭제는 비활성화·기록 보존')
+ print(app("""require 'app/expenses.php';db()->beginTransaction();$id=query('SELECT id FROM expenses LIMIT 1')->fetchColumn();$material=query('SELECT id FROM expense_categories WHERE name=?',['Material'])->fetchColumn();query('UPDATE expenses SET category_id=?,itc_limit_pct=50 WHERE id=?',[$material,$id]);$r=expenseReport(2026)['totals'];if($r['itc']!==325||$r['inventory']!==5325||$r['operating']!==0)throw new RuntimeException('Tax separation');db()->rollBack();echo 'PASS ITC Limit·Inventory/COGS 별도 집계';"""))
  # Real workbooks are copied only into private fixture paths; all imports use this isolated DB.
  source_paths={}
  cid=cmd(['ps','-q','web']).strip()
  for path in glob.glob('/workspace/attachments/*/* Expenses.xlsx'):
-  year=int(Path(path).name[:4]);dest='/app/.local/expense-fixture-'+Path(path).name.replace(' ','-');subprocess.run(['docker','cp',path,cid+':'+dest],check=True,capture_output=True);source_paths[year]=path
+  year=int(Path(path).name[:4]);
+  if year not in (2025,2026):continue
+  dest='/app/.local/expense-fixture-'+Path(path).name.replace(' ','-');subprocess.run(['docker','cp',path,cid+':'+dest],check=True,capture_output=True);source_paths[year]=path
   code='require "app/expense-import.php";$r=expenseWorkbook('+json.dumps(dest)+','+json.dumps(Path(path).name)+','+str(year)+');echo json_encode(["ready"=>$r["ready"],"held"=>$r["held"],"total"=>$r["total"],"splits"=>count(array_filter($r["rows"],fn($x)=>count($x["splits"])>1))]);'
   result=json.loads(app(code));check(result['ready']>500,str(year)+' 원본 월별 비용·분할 인식, 합계행 제외: '+str(result))
  from excel_fixture import write_book

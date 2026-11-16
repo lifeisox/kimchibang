@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {parseReceipt} from '../public/assets/receipt-parser.mjs';
+const suppliers=[{id:7,name:'Costco',aliases:['Costco Business Center']}];
+let p=parseReceipt('Costco Merivale\n2026-11-16\nSUBTOTAL 100.00\nHST 13.00\nTOTAL 113.00\nCHANGE 0.00',suppliers);
+assert.equal(p.supplier.id,7);assert.equal(p.fields.total,'113.00');assert.equal(p.fields.hst,'13.00');assert.equal(p.fields.expense_date,'2026-11-16');
+p=parseReceipt('Amazon.ca\nNovember 16, 2026\nOrder Total: $1,130.00\nGST/HST: $130.00');assert.equal(p.fields.total,'1130.00');assert.equal(p.fields.hst,'130.00');assert.equal(p.fields.expense_date,'2026-11-16');
+p=parseReceipt('TEST STORE\n11/12/2026\nTOTAL 113.00\nHST 13.00');assert.equal(p.fields.expense_date,undefined);assert(p.warnings.some(x=>x.includes('모호')));
+p=parseReceipt('TEST STORE\n2026-02-30\nTotal 30.00 USD\nHST 0.00');assert.equal(p.fields.expense_date,undefined);assert.equal(p.fields.total,undefined);assert.equal(p.fields.hst,undefined);
+p=parseReceipt('TEST STORE\n2026-11-16\nTOTAL\n113.00\nHST\n13.00');assert.equal(p.fields.total,'113.00');assert.equal(p.fields.hst,'13.00');
+console.log('PASS 영수증 Amount·HST·일자·구매처 별칭·모호한 날짜·외화 보수적 처리');

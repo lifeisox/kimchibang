@@ -20,6 +20,7 @@ function handleAction(): never {
     }
     if(empty($_SESSION['user_id'])) redirect('/');
     if($action==='logout') { $_SESSION=[]; session_regenerate_id(true); redirect('/'); }
+    if(is_string($action)&&(str_starts_with($action,'supplier_')||str_starts_with($action,'accounting_'))){if(!expensesEnabled())throw new InvalidArgumentException('기장 기능은 개발 환경에서만 사용합니다.');databaseWriteLock();require_once __DIR__.'/bookkeeping.php';bookkeepingAdminAction($action);}
     if(in_array($action,['production_save','recipe_save','recipe_delete','production_links','retail_save','retail_delete'],true)) {
         $lock=databaseWriteLock();
         try {require_once __DIR__.'/production.php';productionAction($action);} finally {if($lock)databaseWriteLock(true);}

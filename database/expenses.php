@@ -13,3 +13,4 @@ if(!query('SELECT version FROM schema_migrations WHERE version=?',[$version])->f
 foreach(['Material'=>'재료 구입','Wages'=>'인건비','Advertising'=>'광고','Bank'=>'은행 수수료','Insurance'=>'보험','Meals'=>'식사·접대','Supplies'=>'소모품','Licenses'=>'허가·면허','Professional'=>'전문가 수수료','Rent'=>'임대료','Phone/Internet'=>'전화·인터넷','Maintenance'=>'수리·유지','Utilities'=>'수도·전기·가스','Auto'=>'차량','Lease'=>'리스','Fixed Assets'=>'장비·자산 구입','Others'=>'기타·분류 확인'] as $english=>$korean)query('INSERT INTO expense_categories (name,capital) VALUES (?,?) ON DUPLICATE KEY UPDATE id=id',[$korean,$english==='Fixed Assets'?1:0]);
 query('INSERT INTO schema_migrations (version) VALUES (?)',[$version]);
 }
+require __DIR__.'/bookkeeping.php';

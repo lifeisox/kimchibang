@@ -1,0 +1,38 @@
+<?php
+function supplierKey(string $name): string {return mb_strtolower(preg_replace('/[^\pL\pN]+/u','',trim($name))??'');}
+function supplierCanonical(string $name): string {
+ $name=trim(preg_replace('/\s+/u',' ',$name)??'');
+ if(preg_match('/^costco(?:\b|$)/iu',$name))return 'Costco';
+ if(preg_match('/^(?:amazon(?:\.ca|\.com)?(?:\b|$)|amzn\b)/iu',$name))return 'Amazon';
+ return $name;
+}
+function bookkeepingSuppliers(): array {return query('SELECT s.*,COUNT(e.id) usage_count FROM bookkeeping_suppliers s LEFT JOIN expenses e ON e.supplier_id=s.id AND e.voided=0 WHERE s.active=1 GROUP BY s.id,s.name,s.name_key,s.active,s.version,s.created_at ORDER BY usage_count DESC,s.name')->fetchAll();}
+function bookkeepingAccounts(bool $active=true): array {return query('SELECT c.*,COALESCE((SELECT COUNT(*) FROM expenses e WHERE e.category_id=c.id AND e.voided=0),0)+COALESCE((SELECT COUNT(*) FROM expense_splits s JOIN expenses e ON e.id=s.expense_id WHERE s.category_id=c.id AND e.voided=0 AND e.category_id<>c.id),0) usage_count FROM expense_categories c'.($active?' WHERE c.active=1':'').' ORDER BY usage_count DESC,c.sort_order,c.name')->fetchAll();}
+function supplierResolve(string $display,int $selected=0): array {
+ $display=trim($display);$canonical=supplierCanonical($display);$key=supplierKey($canonical);if($key===''&&$selected===0)throw new InvalidArgumentException('구매처를 선택하거나 새 구매처 이름을 입력하세요.');
+ $aliasKey=supplierKey($display);$alias=$aliasKey!==''?query('SELECT s.* FROM bookkeeping_supplier_aliases a JOIN bookkeeping_suppliers s ON s.id=a.supplier_id WHERE a.alias_key=?',[$aliasKey])->fetch():false;
+ if($selected){$s=query('SELECT * FROM bookkeeping_suppliers WHERE id=? AND active=1',[$selected])->fetch();if(!$s)throw new InvalidArgumentException('구매처가 삭제되었거나 없습니다.');if($alias&&(int)$alias['id']!==$selected)throw new InvalidArgumentException('이 영수증 표시명은 다른 구매처에 연결돼 있습니다. 구매처 관리에서 별칭을 확인하세요.');}
+ else {$s=$alias?:query('SELECT * FROM bookkeeping_suppliers WHERE name_key=?',[$key])->fetch();if($s&&!$s['active'])throw new InvalidArgumentException('삭제한 구매처입니다. 구매처 관리에서 복원하거나 다른 구매처를 선택하세요.');if(!$s){query('INSERT INTO bookkeeping_suppliers (name,name_key) VALUES (?,?)',[$canonical,$key]);$s=['id'=>(int)db()->lastInsertId(),'name'=>$canonical];}}
+ $display=$display!==''?$display:$s['name'];$aliasKey=supplierKey($display);
+ if($aliasKey!=='')query('INSERT INTO bookkeeping_supplier_aliases (supplier_id,alias_key,label) VALUES (?,?,?) ON DUPLICATE KEY UPDATE alias_key=alias_key',[$s['id'],$aliasKey,$display]);
+ return ['id'=>(int)$s['id'],'name'=>$s['name'],'display'=>$display];
+}
+function bookkeepingAdminAction(string $action): never {
+ db()->beginTransaction();try{
+  $id=positiveInt($_POST['id']??0,0,PHP_INT_MAX);$before=null;
+  if(str_starts_with($action,'supplier_')){
+   $before=$id?query('SELECT * FROM bookkeeping_suppliers WHERE id=? FOR UPDATE',[$id])->fetch():null;if($id&&(!$before||(int)$before['version']!==(int)($_POST['version']??0)))throw new InvalidArgumentException('구매처가 변경되었습니다. 새로고침하세요.');
+   if($action==='supplier_save'){$name=textfield($_POST,'name',150,true);$key=supplierKey($name);if($key==='')throw new InvalidArgumentException('구매처 이름을 확인하세요.');$owner=query('SELECT supplier_id FROM bookkeeping_supplier_aliases WHERE alias_key=?',[$key])->fetchColumn();if($owner&&(int)$owner!==$id)throw new InvalidArgumentException('다른 구매처의 별칭으로 사용 중입니다. 통합 기능을 사용하세요.');
+    if($id)query('UPDATE bookkeeping_suppliers SET name=?,name_key=?,active=1,version=version+1 WHERE id=?',[$name,$key,$id]);else{query('INSERT INTO bookkeeping_suppliers (name,name_key) VALUES (?,?)',[$name,$key]);$id=(int)db()->lastInsertId();}
+    $aliases=preg_split('/[\r\n]+/u',textfield($_POST,'aliases',4000));$aliases[]=$name;if($before)$aliases[]=$before['name'];foreach($aliases as $alias){$alias=trim($alias);if($alias==='')continue;if(mb_strlen($alias)>150)throw new InvalidArgumentException('별칭은 150자 이내입니다.');$ak=supplierKey($alias);$existing=query('SELECT supplier_id FROM bookkeeping_supplier_aliases WHERE alias_key=?',[$ak])->fetchColumn();if($existing&&(int)$existing!==$id)throw new InvalidArgumentException('다른 구매처에 등록된 별칭입니다: '.$alias);query('INSERT INTO bookkeeping_supplier_aliases (supplier_id,alias_key,label) VALUES (?,?,?) ON DUPLICATE KEY UPDATE label=VALUES(label)',[$id,$ak,$alias]);}
+   }elseif($action==='supplier_merge'){$target=positiveInt($_POST['target_id']??0,1,PHP_INT_MAX);if(!$id||$id===$target||!query('SELECT id FROM bookkeeping_suppliers WHERE id=? AND active=1',[$target])->fetch())throw new InvalidArgumentException('통합할 구매처를 선택하세요.');query('INSERT INTO bookkeeping_supplier_aliases (supplier_id,alias_key,label) VALUES (?,?,?) ON DUPLICATE KEY UPDATE alias_key=alias_key',[$id,supplierKey($before['name']),$before['name']]);query('UPDATE expenses SET supplier_id=?,version=version+1 WHERE supplier_id=?',[$target,$id]);query('UPDATE bookkeeping_supplier_aliases SET supplier_id=? WHERE supplier_id=?',[$target,$id]);query('UPDATE bookkeeping_suppliers SET active=0,version=version+1 WHERE id=?',[$id]);
+   }elseif($action==='supplier_delete'){if(!$id)throw new InvalidArgumentException('구매처를 선택하세요.');query('UPDATE bookkeeping_suppliers SET active=0,version=version+1 WHERE id=?',[$id]);}else throw new InvalidArgumentException('구매처 요청을 확인하세요.');
+  }else {
+   $before=$id?query('SELECT * FROM expense_categories WHERE id=? FOR UPDATE',[$id])->fetch():null;if($id&&(!$before||(int)$before['version']!==(int)($_POST['version']??0)))throw new InvalidArgumentException('Account가 변경되었습니다. 새로고침하세요.');
+   if($action==='accounting_save'){$name=textfield($_POST,'name',100,true);$type=optionalChoice($_POST,'tax_type',['operating','inventory','capital','review']);if(!$type)throw new InvalidArgumentException('Tax treatment를 선택하세요.');require_once __DIR__.'/production.php';$deduct=productionNumber($_POST['default_deductible_pct']??'100',100);$itc=productionNumber($_POST['default_itc_pct']??'100',100);$line=textfield($_POST,'income_tax_line',30);$rank=positiveInt($_POST['sort_order']??999,0,9999);$values=[$name,$type==='capital'?1:0,$type,$deduct,$itc,$line,$rank];if($id)query('UPDATE expense_categories SET name=?,capital=?,tax_type=?,default_deductible_pct=?,default_itc_pct=?,income_tax_line=?,sort_order=?,active=1,version=version+1 WHERE id=?',[...$values,$id]);else{query('INSERT INTO expense_categories (name,capital,tax_type,default_deductible_pct,default_itc_pct,income_tax_line,sort_order) VALUES (?,?,?,?,?,?,?)',$values);$id=(int)db()->lastInsertId();}
+   }elseif($action==='accounting_delete'){if(!$id)throw new InvalidArgumentException('Account를 선택하세요.');query('UPDATE expense_categories SET active=0,version=version+1 WHERE id=?',[$id]);}else throw new InvalidArgumentException('Account 요청을 확인하세요.');
+  }
+  query('INSERT INTO bookkeeping_admin_events (actor_id,kind,detail) VALUES (?,?,?)',[$_SESSION['user_id'],$action,json_encode(['id'=>$id,'before'=>$before,'changes'=>array_diff_key($_POST,['csrf'=>1])],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);db()->commit();
+ }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();if($e instanceof PDOException&&$e->getCode()==='23000')throw new InvalidArgumentException('이미 등록된 이름입니다. 기존 항목을 수정하거나 통합하세요.');throw $e;}
+ $_SESSION['flash']='저장했습니다. 이전 거래의 금액과 증빙은 유지됩니다.';redirect('/?page='.(str_starts_with($action,'supplier_')?'bookkeeping-suppliers':'bookkeeping-accounts'));
+}

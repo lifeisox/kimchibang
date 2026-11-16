@@ -2,6 +2,10 @@
 
 오타와 Rodem Namu의 직원용 PHP 8.5 / MySQL 8.4 판매관리 앱입니다. 한국어 화면, CAD, 오타와 시간 기준이며 금액은 정수 센트로 저장합니다. 외부 유료 API는 사용하지 않습니다.
 
+## 기장 개발 브랜치
+
+이 브랜치 `codex/bookkeeping`은 [기장 (Bookkeeping) 개발·시험 안내](docs/BOOKKEEPING.md)를 사용합니다. 별도 Codespace에서 시험하며 Hostinger 판매용 배포판은 기장 기능을 제외합니다.
+
 ## 클라우드에서 확인하기
 
 [클라우드 미리보기 안내](docs/CLOUD_PREVIEW.md)에 따라 `codex/cloud-preview` 브랜치의 GitHub Codespaces에서 앱과 DB를 실행합니다. 사용자 컴퓨터에 PHP·Docker를 설치하지 않아도 됩니다. Codespaces 무료 사용량·요금은 사용자 계정에서 확인하며 자동으로 유료 결제를 설정하지 않습니다. 테스트 후 완성되면 Hostinger로 배포합니다.
