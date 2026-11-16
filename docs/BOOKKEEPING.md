@@ -50,3 +50,9 @@ DB 백업과 `.local/receipts/`, `.local/expense-imports/`를 함께 안전하�
 Costco 주유의 Fuel Sale/Amount due/HST Included와 식료품의 명시적 Tax 0을 읽습니다. 세금이 표시되지 않은 OK Mart/Green Fresh 사진은 품목 가격만으로 HST 0을 추정하지 않습니다. Amazon Canada PDF는 Invoice date를 우선하고 마지막 페이지 Federal/Provincial Tax 합계 행을 검산합니다. 구매한 물품이 사업용인지 여부는 영수증 인식으로 결정하지 않습니다.
 
 시험은 전사한 4개 매장 영수증의 필드 규칙, 합성 회전 사진의 실제 브라우저 OCR, 첨부 Amazon PDF의 실제 PDF.js 추출로 구분합니다. 전사한 텍스트 시험을 실제 사진 전체의 OCR 정확도로 해석하지 않습니다. 사진 원본은 이번 작업 파일시스템에 제공되지 않았으며 채팅에 표시된 사진을 시각적으로 확인했습니다. 실제 인보이스는 비공개 파일로만 시험하며 Git에 넣지 않습니다. 선택 시험: `TEST_INVOICE=/비공개/invoice.pdf NODE_PATH=/설치경로/node_modules node tests/browser-invoice.cjs`.
+
+## 월별 기장 UI (2026-11-16)
+
+기장 내역에서 연도·월·검색어로 조회하고 해당 월의 전체 행과 합계를 표시합니다. 취소 거래는 제외합니다. 엑셀파일 다운로드는 검색어나 월과 관계없이 선택 연도의 전체 기장을 1월~12월 탭으로 받습니다. 메뉴의 독립 입력 링크를 없애고 기장 내역의 영수증 입력 버튼으로 진입합니다.
+
+새 거래의 ITC Eligibility는 Eligible로 시작하고 Meals 선택 시 Review Required로 바뀝니다. 기존 거래·엑셀 가져오기 내역의 상태는 소급 변경하지 않습니다. 지불 방법 입력 UI는 제거하며 기존 값은 보존합니다. 브라우저에서 스캐너 드라이버를 직접 실행할 수 없으므로 PC 스캐너 프로그램에서 PDF/JPG로 저장한 후 파일을 선택합니다. 같은 연도 엑셀은 개발·운영 모두 중복 가져오기를 DB의 UNIQUE 제약과 실행 전 확인으로 차단합니다.

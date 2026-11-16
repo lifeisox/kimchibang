@@ -35,7 +35,7 @@ function expenseAction(): never {
    require_once __DIR__.'/production.php';$business=productionNumber($_POST['business_pct']??'100',100);$deductible=productionNumber($_POST['deductible_pct']??'100',100);
    $itcLimit=productionNumber($_POST['itc_limit_pct']??(string)($before['itc_limit_pct']??$account['default_itc_pct']),100);
    $itc=textfield($_POST,'itc_status',12,true);if(!in_array($itc,['review','eligible','ineligible'],true))throw new InvalidArgumentException('매입세액 검토 상태를 선택하세요.');
-   $method=textfield($_POST,'payment_method',30);$description=textfield($_POST,'description',5000);$ocr=textfield($_POST,'ocr_text',20000);
+   $method=(string)($before['payment_method']??'');$description=textfield($_POST,'description',5000);$ocr=textfield($_POST,'ocr_text',20000);
    $splitCount=$id?(int)query('SELECT COUNT(*) FROM expense_splits WHERE expense_id=?',[$id])->fetchColumn():0;
    if($splitCount>1&&($subtotal!==(int)$before['subtotal_cents']||$hst!==(int)$before['hst_cents']||$other!==(int)$before['other_tax_cents']||$total!==(int)$before['total_cents']||$category!==(int)$before['category_id']))throw new InvalidArgumentException('여러 항목으로 분할된 엑셀 비용의 금액·분류는 이 화면에서 바꾸지 않습니다. 취소 후 정확한 항목으로 다시 입력하세요. 증빙·사업 비율·검토 상태는 수정할 수 있습니다.');
    $values=[$date,$vendor,$category,$description,$subtotal,$hst,$other,$total,$business,$itc,$deductible,$method,$ocr];
