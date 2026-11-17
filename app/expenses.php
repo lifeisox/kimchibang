@@ -20,6 +20,7 @@ function expenseFile(array $upload): ?array {
  if(!move_uploaded_file($upload['tmp_name'],$path))throw new RuntimeException('영수증 저장 실패');chmod($path,0600);
  return ['storage_key'=>$key,'mime'=>$mime,'original_name'=>mb_substr(basename($upload['name']),0,200),'sha256'=>hash_file('sha256',$path)];
 }
+function expenseLedgerUrl(string $date): string {return '/?page=expenses&year='.(int)substr($date,0,4).'&month='.(int)substr($date,5,2);}
 function expenseAction(): never {
  $action=$_POST['action']??'';$id=positiveInt($_POST['id']??0,0,PHP_INT_MAX);$attachment=null;
  db()->beginTransaction();
@@ -30,7 +31,7 @@ function expenseAction(): never {
    if(!$before)throw new InvalidArgumentException('비용을 찾을 수 없습니다.');$reason=textfield($_POST,'reason',500,true);query('UPDATE expenses SET voided=1,version=version+1 WHERE id=?',[$id]);$detail=['before'=>$before,'reason'=>$reason,'action'=>'void'];
   } else {
    $key=textfield($_POST,'request_key',32,true);if(!preg_match('/^[a-f0-9]{32}$/D',$key))throw new InvalidArgumentException('화면을 새로고침하세요.');
-   if(!$id&&($same=query('SELECT id FROM expenses WHERE request_key=?',[$key])->fetchColumn())){db()->rollBack();redirect('/?page=expense-edit&id='.$same);}
+   if(!$id&&($same=query('SELECT id,expense_date FROM expenses WHERE request_key=?',[$key])->fetch())){db()->rollBack();redirect(expenseLedgerUrl($same['expense_date']));}
    $date=validDate(textfield($_POST,'expense_date',10,true));$vendor=textfield($_POST,'vendor',150);$selectedSupplier=positiveInt($_POST['supplier_id']??0,0,PHP_INT_MAX);$category=positiveInt($_POST['category_id']??0,1,PHP_INT_MAX);$account=query('SELECT * FROM expense_categories WHERE id=?',[$category])->fetch();if(!$account||(!$account['active']&&(!$before||(int)$before['category_id']!==$category)))throw new InvalidArgumentException('비용 항목을 선택하세요.');
    $hst=cents($_POST['hst']??'0');$other=cents($_POST['other_tax']??'0');$total=cents($_POST['total']??'');$subtotal=$total-$hst-$other;if($subtotal<0||$total===0)throw new InvalidArgumentException('Amount는 HST와 Other Tax의 합계 이상이어야 합니다.');if(isset($_POST['subtotal'])&&$_POST['subtotal']!==''&&cents($_POST['subtotal'])!==$subtotal)throw new InvalidArgumentException('Net Amount 계산값이 다릅니다. Amount와 HST를 다시 확인하세요.');
    require_once __DIR__.'/production.php';$business=productionNumber($_POST['business_pct']??'100',100);$deductible=productionNumber($_POST['deductible_pct']??'100',100);
@@ -50,7 +51,7 @@ function expenseAction(): never {
   }
   query('INSERT INTO expense_events (expense_id,actor_id,detail) VALUES (?,?,?)',[$id,$_SESSION['user_id'],json_encode($detail,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);db()->commit();
  } catch(Throwable $e){if(db()->inTransaction())db()->rollBack();if($attachment){$f=expenseReceiptDirectory().'/'.$attachment['storage_key'];if(is_file($f))unlink($f);}throw $e;}
- $_SESSION['flash']=$action==='expense_void'?'비용을 취소했습니다. 기록과 영수증은 보존합니다.':'비용과 영수증을 저장했습니다.';redirect('/?page=expense-edit&id='.$id);
+ $_SESSION['flash']=$action==='expense_void'?'비용을 취소했습니다. 기록과 영수증은 보존합니다.':'비용과 영수증을 저장했습니다.';redirect($action==='expense_void'?'/?page=expense-edit&id='.$id:expenseLedgerUrl($date));
 }
 function expenseAllocate(int $total,array $weights): array {
  $sum=array_sum($weights);if($sum<=0)return array_fill(0,count($weights),0);$result=[];$cumulative=0;$allocated=0;foreach($weights as $w){$cumulative+=$w;$target=intdiv($total*$cumulative,$sum);$result[]=$target-$allocated;$allocated=$target;}return $result;

@@ -38,7 +38,7 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  _,html,_=req(data={'action':'login','csrf':token(html),'username':'admin','password':'fixture-password-123'});csrf=token(html)
  category=app('echo query("SELECT id FROM expense_categories WHERE name=?",["Supplies"])->fetchColumn();').strip()
  data={'action':'expense_save','csrf':csrf,'request_key':uuid.uuid4().hex,'expense_date':'2026-01-02','vendor':'가상 구입처','category_id':category,'description':'fixture','subtotal':'100.00','hst':'13.00','other_tax':'0','total':'113.00','business_pct':'50','deductible_pct':'100','itc_status':'eligible','ocr_text':''}
- status,html,url=req('/?page=expense-edit',data);check(status==200 and '비용과 영수증을 저장했습니다' in html,'비용 입력 저장');eid=int(re.search(r'&id=(\d+)',url)[1])
+ status,html,url=req('/?page=expense-edit',data);check(status==200 and '비용과 영수증을 저장했습니다' in html,'비용 입력 저장');check('page=expenses&year=2026&month=1' in url,'저장 후 거래 월의 기장 내역으로 이동');eid=int(app('echo query("SELECT id FROM expenses WHERE request_key=?",['+json.dumps(data['request_key'])+'])->fetchColumn();'))
  req('/?page=expense-edit',data);check(app('echo query("SELECT COUNT(*) FROM expenses")->fetchColumn();').strip()=='1','비용 중복 제출 방지')
  report=json.loads(app('require "app/expenses.php";echo json_encode(expenseReport(2026)["totals"]);'));check(report['paid']==11300 and report['itc']==650 and report['operating']==5000,'사업분50%·확인된 HST만 공제·운영비 집계')
  wrong=dict(data,request_key=uuid.uuid4().hex,total='114');check(req('/?page=expense-edit',wrong)[0]==422,'공급가·세금·합계 불일치 저장 차단')
