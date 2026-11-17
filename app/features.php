@@ -6,6 +6,6 @@ function expensesEnabled(): bool {
 }
 function expenseRouteRequested(): bool {
  $page=$_GET['page']??'';$api=$_GET['api']??'';$action=$_POST['action']??'';
- return (is_string($page)&&in_array($page,['expenses','expense-edit','expense-report','expense-import','bookkeeping-suppliers','bookkeeping-accounts'],true))
+ return (is_string($page)&&in_array($page,['expenses','expense-edit','expense-report','expense-import','bookkeeping-suppliers','bookkeeping-accounts','bookkeeping-supplier','expense-receipt-view'],true))
   ||(is_string($api)&&str_starts_with($api,'expense-'))||(is_string($action)&&(str_starts_with($action,'expense_')||str_starts_with($action,'supplier_')||str_starts_with($action,'accounting_')));
 }

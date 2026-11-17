@@ -3,6 +3,7 @@ $path=parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH);
 if(!in_array($path,['/','/index.php'],true)) {http_response_code(404);header('Content-Type: text/plain; charset=utf-8');echo '페이지를 찾을 수 없습니다.';exit;}
 require __DIR__.'/../app/bootstrap.php';
 if(!expensesEnabled()&&expenseRouteRequested()){http_response_code(404);header('Content-Type: text/plain; charset=utf-8');echo '이 기능은 현재 운영 버전에서 제공하지 않습니다.';exit;}
+if(($_GET['page']??'')==='expense-receipt-view'){require __DIR__.'/../app/expense-receipt-view.php';serveExpenseViewer();}
 require __DIR__.'/../app/actions.php';
 require __DIR__.'/../app/setup.php';
 require __DIR__.'/../app/branding.php';
@@ -23,7 +24,7 @@ try {
 catch(Throwable $err) { error_log((string)$err); $error='저장 또는 조회 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.'; http_response_code(500); }
 $page=is_string($_GET['page']??null)?$_GET['page']:'home';
 $logged=isset($_SESSION['user_id']);
-$titles=['home'=>'이번 주 업무','brand'=>'브랜드 로고','accounts'=>'계정·비밀번호','bookkeeping-suppliers'=>'구매처 관리','bookkeeping-accounts'=>'Chart of Accounts','expense-import'=>'기장 엑셀 가져오기','expenses'=>'기장 내역','expense-edit'=>'영수증·거래 입력','expense-report'=>'Income Tax / GST/HST Reports','material-calculator'=>'재료 구입량 계산하기','production'=>'생산 계획','production-settings'=>'주재료·배합 기준 관리','sales'=>'판매 통계','excel-preview'=>'엑셀 가져오기','new-order'=>'새 주문 넣기','orders'=>'주문 목록','order'=>'주문 상세','order-edit'=>'주문 수정·대기 제품 취소','customers'=>'고객 찾기','customer'=>'고객 원장','customer-edit'=>'고객 등록·수정','products'=>'제품과 가격','product-edit'=>'제품 등록·수정'];
+$titles=['home'=>'이번 주 업무','brand'=>'브랜드 로고','accounts'=>'계정·비밀번호','bookkeeping-supplier'=>'구매처 원장','bookkeeping-suppliers'=>'구매처 관리','bookkeeping-accounts'=>'Chart of Accounts','expense-import'=>'기장 엑셀 가져오기','expenses'=>'기장 내역','expense-edit'=>'영수증·거래 입력','expense-report'=>'Income Tax / GST/HST Reports','material-calculator'=>'재료 구입량 계산하기','production'=>'생산 계획','production-settings'=>'주재료·배합 기준 관리','sales'=>'판매 통계','excel-preview'=>'엑셀 가져오기','new-order'=>'새 주문 넣기','orders'=>'주문 목록','order'=>'주문 상세','order-edit'=>'주문 수정·대기 제품 취소','customers'=>'고객 찾기','customer'=>'고객 원장','customer-edit'=>'고객 등록·수정','products'=>'제품과 가격','product-edit'=>'제품 등록·수정'];
 $title=$logged?($titles[$page]??'페이지를 찾을 수 없습니다'):'로그인';
 function input(string $label,string $name,string $value='',string $type='text',bool $required=false): void { echo '<label>'.e($label).'<input type="'.e($type).'" name="'.e($name).'" value="'.e($value).'" '.($required?'required':'').'></label>'; }
 function orderTable(array $rows): void {

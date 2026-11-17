@@ -35,7 +35,7 @@ try:
  check(status==200 and '비용·영수증' not in html and 'receipt-reader' not in html and 'wasm-unsafe-eval' not in html,'판매 화면에서 비용 메뉴·읽기 프로그램 제외')
  for page in ['home','orders','customers','new-order','production','material-calculator','production-settings','sales','accounts']:
   status,html=req('/?page='+page);check(status==200 and '화면을 불러오지 못했습니다' not in html,'운영 화면 '+page)
- for page in ['expenses','expense-edit','expense-report','expense-import','bookkeeping-suppliers','bookkeeping-accounts']:
+ for page in ['expenses','expense-edit','expense-report','expense-import','bookkeeping-suppliers','bookkeeping-accounts','bookkeeping-supplier','expense-receipt-view']:
   check(req('/?page='+page)[0]==404,'보류 화면 직접 접근 차단 '+page)
  for api in ['expense-receipt','expense-csv']:
   check(req('/?api='+api+'&id=1')[0]==404,'보류 API 차단 '+api)

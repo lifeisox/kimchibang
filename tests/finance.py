@@ -33,6 +33,7 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  for _ in range(50):
   try:_,html,_=req();break
   except (OSError,urllib.error.URLError):time.sleep(.2)
+ check(req('/?page=expense-receipt-view&id=1')[0]==401,'로그인 전 영수증 팝업 접근 차단')
  check(req('/?api=expense-receipt&id=1')[0]==401,'로그인 전 영수증 접근 차단')
  _,html,_=req(data={'action':'login','csrf':token(html),'username':'admin','password':'fixture-password-123'});csrf=token(html)
  category=app('echo query("SELECT id FROM expense_categories WHERE name=?",["Supplies"])->fetchColumn();').strip()
@@ -72,6 +73,7 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  if r.returncode:raise RuntimeError(r.stderr)
  check(app('echo query("SELECT COUNT(*) FROM expenses")->fetchColumn();').strip()=='4','확인 비용2건 추가·보류 행 제외·기존 비용2건 유지')
  check(app('echo query("SELECT COUNT(*) FROM expense_splits WHERE expense_id=(SELECT id FROM expenses WHERE vendor=?)",["MIXED STORE"])->fetchColumn();').strip()=='2','한 영수증의 항목별 분할 보존')
+ check(app('echo query("SELECT COUNT(*) FROM expenses e JOIN expense_import_rows r ON r.expense_id=e.id WHERE e.itc_status<>?",["eligible"])->fetchColumn();').strip()=='0','Meals 없는 신규 엑셀 거래 ITC Eligible')
  # CSV remains authenticated and exports only nonvoid records.
  check(req('/?api=expense-csv&year=2026')[0]==200,'신고용 상세 CSV')
  _,html,_=req('/?page=expense-edit&id='+str(eid));version=app('echo query("SELECT version FROM expenses WHERE id=1")->fetchColumn();').strip()

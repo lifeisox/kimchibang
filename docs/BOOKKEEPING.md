@@ -17,13 +17,13 @@
 - **영수증·거래 입력**: 사진 촬영 / 사진·PDF 선택 → 자동 읽기 → 결과 확인 → 읽은 값 적용 → Account·금액 확인 → 저장. 직접 입력 후 증빙만 첨부해도 됩니다.
 - **구매처 관리**: 신규 등록, 이름 수정, 별칭 추가, 통합, 사용 중지·복원. Costco 지점과 Amazon 표기는 기본 대표 구매처에 연결합니다. 원래 영수증 표시명은 거래에 보존합니다. 그 외 유사한 이름을 추측해서 합치지 않습니다. 자주 사용한 구매처부터 나옵니다.
 - **Chart of Accounts**: 엑셀 17개 Account와 추가 신고용 Account를 제공합니다. 처음은 두 엑셀의 사용 빈도, 이후는 실제 거래 횟수 순입니다. 수정·추가·사용 중지·복원이 가능하며 과거 거래 금액은 유지합니다.
-- **Tax Reports**: 연간 Account / 월별 Amount, GST/HST Paid, ITCs, Income Tax Review Amount를 인쇄하거나 상세 CSV로 내보냅니다.
+- **Tax Reports**: 연간 Account / 월별 Amount, GST/HST Paid, ITCs, Income Tax Review Amount를 인쇄하거나 월별 탭이 있는 연간 XLSX로 내보냅니다.
 
 ## 금액과 신고 기준
 
 금액은 CAD 정수 센트로 보관합니다. **Amount (Tax Included) − HST − Other Tax = Net Amount**를 입력 즉시 계산하고 서버에서도 검사합니다. Account의 기본 비율은 새 입력에만 적용하며 기존 거래 비율을 소급 변경하지 않습니다. Tax settings를 펼쳐 Business Use, Income Tax Deductible, ITC Limit, ITC Eligibility를 확인합니다. Meals 기본 비율은 Income Tax / ITC Limit 각각 50%이며 거래별 예외를 확인합니다.
 
-엑셀 가져오기는 ITC Review Required로 시작합니다. 확인된 Eligible 거래에만 HST × Business Use × ITC Limit을 ITCs로 넣습니다. Inventory Purchases, Capital Assets, Tax Review Required는 Operating Expenses에서 분리합니다. Opening/Closing Inventory에 따른 COGS 및 CCA, 별도 마트·케이터링 매출, GST/HST Collected, 이미 신고한 세액은 자동 확정하지 않습니다. 현재 보고서는 신고 준비 자료입니다.
+신규 엑셀 가져오기는 Meals가 포함되면 ITC Review Required, 그 외는 ITC Eligible로 시작합니다. 확인된 Eligible 거래에만 HST × Business Use × ITC Limit을 ITCs로 넣습니다. Inventory Purchases, Capital Assets, Tax Review Required는 Operating Expenses에서 분리합니다. Opening/Closing Inventory에 따른 COGS 및 CCA, 별도 마트·케이터링 매출, GST/HST Collected, 이미 신고한 세액은 자동 확정하지 않습니다. 현재 보고서는 신고 준비 자료입니다.
 
 여러 Account로 분할된 엑셀 거래는 원본 분할을 보존합니다. 금액·분류 정정은 취소 후 다시 입력하고, 증빙·비율·ITC 검토 상태는 수정할 수 있습니다. 분할 거래의 비율은 거래 전체에 적용하므로 Account마다 사업/공제 비율이 다르면 별도 거래로 정정합니다. 취소한 거래는 신고 집계에서 제외하며 이력을 보존합니다.
 
@@ -56,3 +56,11 @@ Costco 주유의 Fuel Sale/Amount due/HST Included와 식료품의 명시적 Tax
 기장 내역에서 연도·월·검색어로 조회하고 해당 월의 전체 행과 합계를 표시합니다. 취소 거래는 제외합니다. 엑셀파일 다운로드는 검색어나 월과 관계없이 선택 연도의 전체 기장을 1월~12월 탭으로 받습니다. 메뉴의 독립 입력 링크를 없애고 기장 내역의 영수증 입력 버튼으로 진입합니다.
 
 새 거래의 ITC Eligibility는 Eligible로 시작하고 Meals 선택 시 Review Required로 바뀝니다. 기존 거래·엑셀 가져오기 내역의 상태는 소급 변경하지 않습니다. 지불 방법 입력 UI는 제거하며 기존 값은 보존합니다. 브라우저에서 스캐너 드라이버를 직접 실행할 수 없으므로 PC 스캐너 프로그램에서 PDF/JPG로 저장한 후 파일을 선택합니다. 같은 연도 엑셀은 개발·운영 모두 중복 가져오기를 DB의 UNIQUE 제약과 실행 전 확인으로 차단합니다.
+
+## 구매처 원장과 기본값
+
+구매처 목록의 이름을 누르면 전체 기간의 취소되지 않은 거래와 Amount/HST/Net Amount 합계, 영수증 링크를 보여줍니다. 영수증은 로그인한 직원에게만 열리며 이미지는 별도 창의 확대·축소·맞춤 버튼, PDF는 브라우저 PDF 뷰어의 확대 기능으로 확인합니다. 팝업을 막은 브라우저에서는 새 탭으로 열 수 있습니다.
+
+신규 입력의 Account는 Material입니다. 기존 거래의 Account는 유지합니다. 월별 탭 XLSX의 Account에는 계정명만 표시하며 복수 계정은 `/`로 연결합니다. Tax Reports의 다운로드도 동일한 연간 XLSX를 사용합니다.
+
+이 변경 이후 새로 가져오는 엑셀 거래는 Meals가 포함되면 Review Required, 그렇지 않으면 ITC Eligible로 시작합니다. 기존에 가져온 거래의 상태는 자동 변경하지 않습니다. 이미 가져온 연도를 다시 가져오는 기능은 계속 차단합니다.

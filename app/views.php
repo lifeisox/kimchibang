@@ -3,6 +3,7 @@ function pv(string $key,string $default=''): string {return is_string($_POST[$ke
 if($page==='accounts'): require __DIR__.'/accounts-page.php';
 elseif($page==='material-calculator'): require __DIR__.'/material-calculator.php';
 elseif(in_array($page,['bookkeeping-suppliers','bookkeeping-accounts'],true)): require __DIR__.'/bookkeeping-settings.php';
+elseif($page==='bookkeeping-supplier'): require __DIR__.'/expense-supplier-ledger.php';
 elseif($page==='expense-import'): require __DIR__.'/expense-import-page.php';
 elseif(in_array($page,['expenses','expense-edit','expense-report'],true)): require __DIR__.'/expenses-page.php';
 elseif($page==='production'): require __DIR__.'/production-page.php';
