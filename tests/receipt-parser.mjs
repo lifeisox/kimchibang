@@ -19,3 +19,10 @@ p=parseReceipt('Invoice / Facture\nPaid / Payé\nSold by / Vendu par: Amazon.com
 p=parseReceipt('Costco\nHST #121476329\nTOTAL TAX 0.00\nTOTAL 86.21');assert.equal(p.fields.hst,'0.00');assert.equal(p.fields.total,'86.21');
 p=parseReceipt('Amazon.ca\nTotal payable $29.36\nFederal tax / Provincial tax / Tax subtotal\nTotal $25.98 $9.38 $0.00 $3.38');assert.equal(p.fields.hst,undefined);
 console.log('PASS 주유 HST Included·식료품 Tax 0·구매처·Amazon Tax 합계 검산·Invoice date 우선');
+const learned=[{id:22,name:'Learning Store',aliases:['Learning Branch'],rule:{total_label:'Balance payable',hst_label:'',missing_hst_zero:1}}];
+p=parseReceipt('Learning Branch\n2026-11-16\nTotal 999.00\nBalance payable 40.00',learned);assert.equal(p.fields.total,'40.00');assert.equal(p.fields.hst,'0.00');assert(p.warnings.some(x=>x.includes('기억 규칙')));
+p=parseReceipt('Other Store\nBalance payable 40.00',learned);assert.equal(p.fields.hst,undefined);
+p=parseReceipt('Learning Branch\nBalance payable 40.00\nHST unreadable',learned);assert.equal(p.fields.hst,undefined);
+p=parseReceipt('Learning Branch\nBalance payable 40.00\nBalance payable 45.00',learned);assert.equal(p.fields.total,undefined);
+p=parseReceipt('Learning Branch\nBalance payable 40.00 USD',learned);assert.equal(p.fields.total,undefined);assert.equal(p.fields.hst,undefined);
+console.log('PASS 구매처별 기억 규칙·다른 구매처 격리·명시적 세금 보호·충돌·외화 보호');

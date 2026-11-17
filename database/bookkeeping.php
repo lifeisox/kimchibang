@@ -17,3 +17,5 @@ if(!query('SELECT version FROM schema_migrations WHERE version=?',[$version])->f
  foreach(query('SELECT id,vendor FROM expenses WHERE supplier_id IS NULL')->fetchAll() as $legacy){if(supplierKey($legacy['vendor'])==='')continue;$supplier=supplierResolve($legacy['vendor']);query('UPDATE expenses SET supplier_id=? WHERE id=?',[$supplier['id'],$legacy['id']]);}
  query('INSERT INTO schema_migrations (version) VALUES (?)',[$version]);
 }
+
+db()->exec("CREATE TABLE IF NOT EXISTS bookkeeping_receipt_rules (supplier_id INT UNSIGNED PRIMARY KEY,total_label VARCHAR(100) NOT NULL DEFAULT '',hst_label VARCHAR(100) NOT NULL DEFAULT '',missing_hst_zero TINYINT NOT NULL DEFAULT 0,version INT NOT NULL DEFAULT 1,source_expense_id INT UNSIGNED NOT NULL,updated_by INT UNSIGNED NOT NULL,updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");

@@ -56,6 +56,13 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  aid=app('echo query("SELECT id FROM expense_categories WHERE name=?",["Fixture Account"])->fetchColumn();').strip()
  check(req('/?page=bookkeeping-accounts',{'action':'accounting_delete','csrf':csrf,'id':aid,'version':1})[0]==200 and app('echo query("SELECT active FROM expense_categories WHERE id=?",['+aid+'])->fetchColumn();').strip()=='0','Account 삭제는 비활성화·기록 보존')
  print(app("""require 'app/expenses.php';db()->beginTransaction();$id=query('SELECT id FROM expenses LIMIT 1')->fetchColumn();$material=query('SELECT id FROM expense_categories WHERE name=?',['Material'])->fetchColumn();query('UPDATE expenses SET category_id=?,itc_limit_pct=50 WHERE id=?',[$material,$id]);$r=expenseReport(2026)['totals'];if($r['itc']!==325||$r['inventory']!==5325||$r['operating']!==0)throw new RuntimeException('Tax separation');db()->rollBack();echo 'PASS ITC Limit·Inventory/COGS 별도 집계';"""))
+ # Corrected expense values teach labels, never literal amounts; everything stays in this fixture DB.
+ learned=dict(data,id=str(eid),version='1',remember_receipt='1',receipt_rule_version='0',ocr_text='Learning Store\nTotal 113.00\nHST 13.00')
+ check(req('/?page=expense-edit&id='+str(eid),learned)[0]==200,'수정 거래에서 읽기 표기 자동 기억')
+ rule=json.loads(app('require "app/expense-learning.php";echo json_encode(receiptRule((int)query("SELECT supplier_id FROM expenses WHERE id=1")->fetchColumn()));'))
+ check(rule['total_label']=='Total' and rule['hst_label']=='HST' and int(rule['version'])==1,'Amount·HST 표기만 저장·금액 미저장')
+ check(req('/?page=expense-edit&id='+str(eid),dict(learned,version='2'))[0]==422,'동시 변경된 기억 규칙 덮어쓰기 차단')
+ check(req('/?page=expense-edit&id='+str(eid),dict(learned,version='2',receipt_rule_version='1',forget_receipt_rule='1'))[0]==200,'기억 규칙 초기화')
  # Real workbooks are copied only into private fixture paths; all imports use this isolated DB.
  source_paths={}
  cid=cmd(['ps','-q','web']).strip()
@@ -79,7 +86,7 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  _,html,_=req('/?page=expense-edit&id='+str(eid));version=app('echo query("SELECT version FROM expenses WHERE id=1")->fetchColumn();').strip()
  status,html,_=req('/?page=expense-edit&id='+str(eid),{'action':'expense_void','csrf':token(html),'id':str(eid),'version':version,'reason':'fixture 취소'})
  check(status==200 and '취소된 비용' in html,'비용 취소·감사기록 보존')
- check(app('echo query("SELECT COUNT(*) FROM expense_events WHERE expense_id=1")->fetchColumn();').strip()=='2','생성·취소 이력 보존')
+ check(app('echo query("SELECT COUNT(*) FROM expense_events WHERE expense_id=1")->fetchColumn();').strip()=='4','생성·수정·규칙 초기화·취소 이력 보존')
 finally:
  if container:subprocess.run(['docker','rm','-f',container],cwd=ROOT,capture_output=True)
  admin('DROP DATABASE IF EXISTS '+name+'; REVOKE ALL ON '+name+".* FROM 'kimchi'@'%';")

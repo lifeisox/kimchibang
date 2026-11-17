@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/bookkeeping.php';
+require_once __DIR__.'/expense-learning.php';
 function expenseReceiptDirectory(): string {$dir=__DIR__.'/../.local/receipts';if(!is_dir($dir)&&!mkdir($dir,0700,true))throw new RuntimeException('영수증 저장 폴더를 만들 수 없습니다.');return $dir;}
 function serveExpenseReceipt(): never {
  if(empty($_SESSION['user_id'])){http_response_code(401);exit;}
@@ -44,7 +45,8 @@ function expenseAction(): never {
    if($id&&$splitCount===1)query('UPDATE expense_splits SET category_id=?,net_cents=? WHERE expense_id=?',[$category,$subtotal,$id]);
    $keepArchived=$before&&$selectedSupplier>0&&$selectedSupplier===(int)$before['supplier_id']&&$vendor===$before['vendor']&&(int)query('SELECT active FROM bookkeeping_suppliers WHERE id=?',[$selectedSupplier])->fetchColumn()===0;$supplier=$keepArchived?['id'=>$selectedSupplier,'display'=>$vendor]:supplierResolve($vendor,$selectedSupplier);query('UPDATE expenses SET supplier_id=?,vendor=?,itc_limit_pct=? WHERE id=?',[$supplier['id'],$supplier['display'],$itcLimit,$id]);
    $attachment=expenseFile($_FILES['receipt']??[]);if($attachment)query('INSERT INTO expense_receipts (expense_id,storage_key,mime,original_name,sha256) VALUES (?,?,?,?,?)',[$id,...array_values($attachment)]);
-   $detail=['action'=>$before?'edit':'create','before'=>$before,'after'=>query('SELECT * FROM expenses WHERE id=?',[$id])->fetch(),'receipt'=>$attachment];
+   $learned=saveReceiptLearning($supplier['id'],$id,$ocr,$total,$hst);
+   $detail=['learning'=>$learned,'action'=>$before?'edit':'create','before'=>$before,'after'=>query('SELECT * FROM expenses WHERE id=?',[$id])->fetch(),'receipt'=>$attachment];
   }
   query('INSERT INTO expense_events (expense_id,actor_id,detail) VALUES (?,?,?)',[$id,$_SESSION['user_id'],json_encode($detail,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);db()->commit();
  } catch(Throwable $e){if(db()->inTransaction())db()->rollBack();if($attachment){$f=expenseReceiptDirectory().'/'.$attachment['storage_key'];if(is_file($f))unlink($f);}throw $e;}

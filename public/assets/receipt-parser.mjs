@@ -4,7 +4,19 @@ function amounts(line){return [...line.matchAll(/(?<![\d.])\d[\d,]*\.\d{2}(?!\d)
 function validDate(y,m,d){const n=new Date(Date.UTC(+y,+m-1,+d));return n.getUTCFullYear()===+y&&n.getUTCMonth()===+m-1&&n.getUTCDate()===+d?`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`:null;}
 function receiptDate(text,warnings){let m=text.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);if(m)return validDate(...m.slice(1));const months={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};const word='(Jan\\w*|Feb\\w*|Mar\\w*|Apr\\w*|May|Jun\\w*|Jul\\w*|Aug\\w*|Sep\\w*|Oct\\w*|Nov\\w*|Dec\\w*)';m=text.match(new RegExp('\\b'+word+'\\s+(\\d{1,2}),?\\s+(20\\d{2})\\b','i'));if(m)return validDate(m[3],months[m[1].slice(0,3).toLowerCase()],m[2]);m=text.match(new RegExp('\\b(\\d{1,2})\\s+'+word+'\\s+(20\\d{2})\\b','i'));if(m)return validDate(m[3],months[m[2].slice(0,3).toLowerCase()],m[1]);m=text.match(/\b(\d{1,2})[/-](\d{1,2})[/-](20\d{2})\b/);if(m){if(+m[1]>12)return validDate(m[3],m[2],m[1]);if(+m[2]>12)return validDate(m[3],m[1],m[2]);warnings.push('Date 형식이 모호합니다. 날짜를 직접 선택하세요.');}return null;}
 export function receiptScore(text){const p=parseReceipt(text);return (p.fields.total?8:0)+(p.fields.hst?4:0)+(p.fields.expense_date?4:0)+Math.min(5,(text.match(/\b(total|amount|hst|costco|amazon|mart|market|invoice|purchase|subtotal)\b/gi)||[]).length);}
-export function parseReceipt(text,suppliers=[]){
+function ruleLabel(value){return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();}
+export function applyReceiptRule(out,lines,supplier){
+ const rule=supplier?.rule;if(!rule)return;const notes=[];
+ for(const [field,key] of [['total','total_label'],['hst','hst_label']]){if(!rule[key])continue;const values=[];
+ for(let i=0;i<lines.length;i++){const line=lines[i];const m=line.match(/(?:\$\s*)?\d[\d,]*[.,]\d{2}(?!\d)/);const label=m?line.slice(0,m.index):line;
+ if(ruleLabel(label)!==ruleLabel(rule[key]))continue;const n=amounts(m?line:lines[i+1]||'');if(n.length===1)values.push(n[0].toFixed(2));}
+ const distinct=[...new Set(values)];if(distinct.length===1){out.fields[field]=distinct[0];notes.push(field==='total'?'Amount 표기':'HST 표기');}else if(distinct.length>1){delete out.fields[field];out.warnings.push('기억한 '+rule[key]+' 표기의 금액이 여러 개입니다. 직접 확인하세요.');}
+ }
+ const taxEvidence=lines.some(l=>/\b(hst|gst|tvh|tps|tax|taxe)\b/i.test(l)&&!( /#|registration|\bRT\s*\d{4}\b/i.test(l)&&amounts(l).length===0));
+ if(Number(rule.missing_hst_zero)===1&&!out.fields.hst&&!taxEvidence){out.fields.hst='0.00';notes.push('HST 표기 없음 → 0');}
+ if(notes.length)out.warnings.push('구매처 기억 규칙 적용: '+notes.join(', ')+'. 영수증과 대조하세요.');
+}
+export function parseReceipt(text,suppliers=[],selectedSupplierId=0){
  const lines=text.split(/\r?\n/).map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);const out={fields:{},warnings:[]};
  // Invoice date wins over order/shipping dates. Do not use a purchaser/address as the merchant.
  const invoiceLine=lines.find(l=>/invoice date|date de facturation/i.test(l));const date=receiptDate(invoiceLine||text,out.warnings);if(date)out.fields.expense_date=date;else if(!out.warnings.length)out.warnings.push('Date를 찾지 못했습니다. 직접 선택하세요.');
@@ -30,8 +42,9 @@ export function parseReceipt(text,suppliers=[]){
  }
  if(new Set(taxes.map(n=>n.toFixed(2))).size>1){delete out.fields.hst;out.warnings.push('서로 다른 HST 금액이 있습니다. 합계 세액을 확인하세요.');}
  if(new Set(totals.map(n=>n.toFixed(2))).size>1)out.warnings.push('여러 합계 금액이 있습니다. 선택한 Amount가 영수증 전체 금액인지 확인하세요.');
+ out.supplier=suppliers.find(s=>Number(s.id)===Number(selectedSupplierId))||(out.fields.vendor?matchSupplier(out.fields.vendor,suppliers):null);applyReceiptRule(out,lines,out.supplier);
  if(/\b(USD|US\s*dollars?|CNY|RMB|KRW|EUR|GBP)\b|[￥¥€£₩]/i.test(text)){delete out.fields.total;delete out.fields.hst;delete out.fields.other_tax;out.warnings.push('외화 금액은 CAD로 적용하지 않습니다. 카드에 청구된 CAD Amount를 입력하세요.');}
  if(out.fields.total&&out.fields.hst&&Number(out.fields.hst)>Number(out.fields.total)){delete out.fields.hst;out.warnings.push('HST가 Amount보다 커서 적용하지 않았습니다.');}
  if(!out.fields.total)out.warnings.push('Amount를 확인하세요.');if(!out.fields.hst)out.warnings.push('HST가 없거나 읽히지 않았습니다. 영수증과 대조하세요.');
- out.supplier=out.fields.vendor?matchSupplier(out.fields.vendor,suppliers):null;return out;
+ return out;
 }
