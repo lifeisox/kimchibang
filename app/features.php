@@ -1,7 +1,7 @@
 <?php
 function expensesEnabled(): bool {
  $release=__DIR__.'/../config/release.php';
- if(is_file($release)){$flags=require $release;if(!is_array($flags)||($flags['expenses']??false)!==true)return false;}
+ if(is_file($release)){$flags=require $release;return is_array($flags)&&($flags['expenses']??false)===true;}
  return getenv('APP_ENABLE_EXPENSES')==='1';
 }
 function expenseRouteRequested(): bool {

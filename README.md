@@ -4,7 +4,7 @@
 
 ## 기장 개발 브랜치
 
-이 브랜치 `codex/bookkeeping`은 [기장 (Bookkeeping) 개발·시험 안내](docs/BOOKKEEPING.md)를 사용합니다. 별도 Codespace에서 시험하며 Hostinger 판매용 배포판은 기장 기능을 제외합니다.
+이 브랜치 `codex/bookkeeping`은 [기장 (Bookkeeping) 개발·시험 안내](docs/BOOKKEEPING.md)를 사용합니다. 별도 Codespace에서 시험하며 기본 Hostinger 판매 전용 배포판은 기장을 제외하며, `--bookkeeping` 옵션은 [판매·기장 통합 배포판](docs/HOSTINGER_BOOKKEEPING.md)을 만듭니다.
 
 ## 클라우드에서 확인하기
 

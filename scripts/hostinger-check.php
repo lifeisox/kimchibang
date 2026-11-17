@@ -11,6 +11,13 @@ try {
     query('SELECT 1');
     require_once __DIR__.'/../app/import-backup.php';
     importDatabaseIdentity();
+    if(expensesEnabled()){
+        foreach(['fileinfo'] as $extension)if(!extension_loaded($extension))throw new RuntimeException('필요한 PHP 확장: '.$extension);
+        foreach(['expenses','expense_receipts','bookkeeping_suppliers','bookkeeping_receipt_rules'] as $table)if(!query('SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',[$table])->fetchColumn())throw new RuntimeException('기장 테이블 초기화 필요: '.$table);
+        $web=$root.'/../public_html/kimchibang/assets/';
+        if(is_file($root.'/config/release.php'))foreach(['receipt-reader.js','receipt-parser.mjs','receipt-imaging.mjs','vendor/ocr/tesseract.min.js','vendor/ocr/worker.min.js','vendor/ocr/eng.traineddata','vendor/ocr/tesseract-core-lstm.wasm.js','vendor/ocr/tesseract-core-lstm.wasm','vendor/pdf/pdf.mjs','vendor/pdf/pdf.worker.mjs'] as $asset)if(!is_readable($web.$asset))throw new RuntimeException('기장 정적 파일 없음: '.$asset);
+        echo 'PASS 기장 활성화·영수증 파일 검사 확장·기장/읽기 규칙 테이블·OCR/PDF 파일'.PHP_EOL;
+    }
     echo 'PASS PHP 확장·HTTPS 쿠키 설정·비공개 폴더·DB 연결·가져오기 DB 식별'.PHP_EOL;
     echo 'DB 버전: '.query('SELECT VERSION()')->fetchColumn().PHP_EOL;
     echo '검사는 업무 데이터를 변경하지 않았습니다. HTTPS와 공개 폴더 차단은 실제 URL에서 별도로 확인합니다.'.PHP_EOL;

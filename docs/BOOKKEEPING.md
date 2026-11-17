@@ -1,6 +1,6 @@
 # 기장 (Bookkeeping) 개발·시험 안내
 
-`codex/bookkeeping`에서 개발하며 판매 운영 릴리스 `sales-release-20261115`와 분리합니다. 현재 Hostinger에 올리는 패키지는 판매용으로 유지되며 기장 코드·OCR 자원을 포함하지 않습니다. 이 브랜치를 시험했다고 운영 서버의 DB가 바뀌지는 않습니다.
+`codex/bookkeeping`에서 개발하며 판매 운영 릴리스 `sales-release-20261115`와 분리합니다. 기본 패키지는 판매 전용이며, 이제 `--bookkeeping` 옵션으로 기장 코드·OCR 자원을 포함한 [Hostinger 통합 배포판](HOSTINGER_BOOKKEEPING.md)을 만들 수 있습니다. 이 브랜치를 시험했다고 운영 서버의 DB가 바뀌지는 않습니다.
 
 ## 클라우드에서 시작
 
