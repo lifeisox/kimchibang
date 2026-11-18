@@ -19,6 +19,7 @@ function handleAction(): never {
         session_regenerate_id(true); $_SESSION=['user_id'=>$user['id'],'username'=>$user['username']]; redirect('/');
     }
     if(empty($_SESSION['user_id'])) redirect('/');
+    if(is_string($action)&&str_starts_with($action,'biz_')){if(!businessEnabled())throw new InvalidArgumentException('판매 관리는 개발 환경에서 준비 중입니다.');databaseWriteLock();require_once __DIR__.'/business.php';bizAction($action);}
     if($action==='logout') { $_SESSION=[]; session_regenerate_id(true); redirect('/'); }
     if(is_string($action)&&(str_starts_with($action,'supplier_')||str_starts_with($action,'accounting_'))){if(!expensesEnabled())throw new InvalidArgumentException('기장 기능은 개발 환경에서만 사용합니다.');databaseWriteLock();require_once __DIR__.'/bookkeeping.php';bookkeepingAdminAction($action);}
     if(in_array($action,['production_save','recipe_save','recipe_delete','production_links','retail_save','retail_delete'],true)) {

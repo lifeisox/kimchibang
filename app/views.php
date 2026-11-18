@@ -1,6 +1,7 @@
 <?php
 function pv(string $key,string $default=''): string {return is_string($_POST[$key]??null)?$_POST[$key]:$default;}
-if($page==='accounts'): require __DIR__.'/accounts-page.php';
+if(str_starts_with($page,'biz')): require __DIR__.'/business-page.php';
+elseif($page==='accounts'): require __DIR__.'/accounts-page.php';
 elseif($page==='material-calculator'): require __DIR__.'/material-calculator.php';
 elseif(in_array($page,['bookkeeping-suppliers','bookkeeping-accounts'],true)): require __DIR__.'/bookkeeping-settings.php';
 elseif($page==='bookkeeping-supplier'): require __DIR__.'/expense-supplier-ledger.php';

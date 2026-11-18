@@ -9,7 +9,7 @@ out=Path(args[0]) if args else root/('dist/kimchibang-bookkeeping-hostinger.zip'
 out.parent.mkdir(parents=True,exist_ok=True)
 files=[]
 for folder in ['app','database']:
-    files.extend(p for p in (root/folder).rglob('*.php') if p.is_file() and (bookkeeping or not p.name.startswith(('expense','bookkeeping'))))
+    files.extend(p for p in (root/folder).rglob('*.php') if p.is_file() and not p.name.startswith('business') and (bookkeeping or not p.name.startswith(('expense','bookkeeping'))))
 files += [root/'database/schema.sql',root/'config/excel-decisions.json',root/'config/hostinger.example.php',root/'public/index.php']
 files += [root/'scripts'/n for n in ['init.php','create-user.php','hostinger-check.php','apply-cloud-update.php','restore-import.php','hostinger-update.sh']]
 with ZipFile(out,'w',ZIP_DEFLATED) as z:
@@ -18,7 +18,7 @@ with ZipFile(out,'w',ZIP_DEFLATED) as z:
     # Both folders live under domains/ottawakfood.com; only public_html/kimchibang is public.
     z.writestr('public_html/kimchibang/index.php',"<?php\nrequire __DIR__.'/../../kimchibang/public/index.php';\n")
     for p in (root/'public/assets').rglob('*'):
-        if p.is_file() and (bookkeeping or ('vendor' not in p.relative_to(root/'public/assets').parts and not p.name.startswith('receipt-'))):z.write(p,'public_html/kimchibang/assets/'+p.relative_to(root/'public/assets').as_posix())
+        if p.is_file() and not p.name.startswith('business') and (bookkeeping or ('vendor' not in p.relative_to(root/'public/assets').parts and not p.name.startswith('receipt-'))):z.write(p,'public_html/kimchibang/assets/'+p.relative_to(root/'public/assets').as_posix())
     z.write(root/'public/favicon.ico','public_html/kimchibang/favicon.ico')
     z.writestr('public_html/kimchibang/.htaccess','''Options -Indexes
 DirectoryIndex index.php

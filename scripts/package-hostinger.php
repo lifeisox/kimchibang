@@ -10,7 +10,7 @@ try {
     $zip=new PharData($temp,0,null,Phar::ZIP);
     foreach(['app','database'] as $folder) {
         foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root.'/'.$folder,FilesystemIterator::SKIP_DOTS)) as $file) {
-            if($file->isFile()&&!$file->isLink()&&$file->getExtension()==='php'&&($bookkeeping||(!str_starts_with($file->getFilename(),'expense')&&!str_starts_with($file->getFilename(),'bookkeeping')))) {
+            if($file->isFile()&&!$file->isLink()&&$file->getExtension()==='php'&&!str_starts_with($file->getFilename(),'business')&&($bookkeeping||(!str_starts_with($file->getFilename(),'expense')&&!str_starts_with($file->getFilename(),'bookkeeping')))) {
                 $relative=substr($file->getPathname(),strlen($root)+1);
                 $zip->addFile($file->getPathname(),'kimchibang/'.$relative);
             }

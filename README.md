@@ -2,6 +2,10 @@
 
 오타와 Rodem Namu의 직원용 PHP 8.5 / MySQL 8.4 판매관리 앱입니다. 한국어 화면, CAD, 오타와 시간 기준이며 금액은 정수 센트로 저장합니다. 외부 유료 API는 사용하지 않습니다.
 
+## 메인 판매 관리 개발
+
+`codex/business-sales`는 별도 거래처·제품·위탁판매·인보이스를 위한 [판매 관리 개발판](docs/BUSINESS_SALES.md)입니다. `php scripts/enable-business-preview.php`로 현재 개발 DB에서 시험할 수 있습니다. 기존 Hostinger 배포판은 이 기능을 포함하지 않습니다.
+
 ## 기장 개발 브랜치
 
 이 브랜치 `codex/bookkeeping`은 [기장 (Bookkeeping) 개발·시험 안내](docs/BOOKKEEPING.md)를 사용합니다. 별도 Codespace에서 시험하며 기본 Hostinger 판매 전용 배포판은 기장을 제외하며, `--bookkeeping` 옵션은 [판매·기장 통합 배포판](docs/HOSTINGER_BOOKKEEPING.md)을 만듭니다.

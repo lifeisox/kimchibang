@@ -8,3 +8,5 @@ foreach($products as $p) query('INSERT INTO products (code,name,weight_g,price_c
 echo "DB와 초기 제품 준비 완료 (기존 가격 보존)\n";
 require __DIR__.'/../database/production.php';
 if(expensesEnabled())require __DIR__.'/../database/expenses.php';
+
+if(businessEnabled())require __DIR__.'/../database/business.php';
