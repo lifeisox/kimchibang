@@ -54,7 +54,17 @@ try:
   qty=app('echo query("SELECT planned FROM biz_deliveries WHERE id=?",['+str(delivery)+'])->fetchColumn();').strip();check(post({'action':'biz_deliver','id':delivery,'delivered':qty})[0]==200,'개인 납품 확인')
  check(app('echo query("SELECT COUNT(*) FROM biz_invoices WHERE client_id=?",['+str(person)+'])->fetchColumn();').strip()=='1','여러 제품을 하나의 개인 인보이스로 발행')
  check(app('echo query("SELECT total_cents FROM biz_invoices WHERE client_id=?",['+str(person)+'])->fetchColumn();').strip()=='1464','개인 정가·10% 할인·품목별 HST')
- for page in ['biz','biz-plan','biz-production','biz-results','biz-invoices','biz-products','biz-clients','biz-invoice&id=1']:
+
+ d=plan('OK','Crab Rice Ball',3,day='2026-11-30')
+ check(post({'action':'biz_plan_update','id':d,'version':1,'planned':4})[0]==200,'납품 전 계획 수량 수정')
+ check(post({'action':'biz_plan_update','id':d,'version':1,'planned':9})[0]==422,'계획 동시 수정 충돌 차단')
+ check(post({'action':'biz_plan_update','id':d,'version':2,'planned':0})[0]==200,'계획 취소와 이력 보존')
+ check(post({'action':'biz_deliver','id':d,'delivered':1})[0]==422,'취소한 계획 납품 차단')
+ pid=ids['products']['Crab Rice Ball'];price_data={'action':'biz_catalog_save','id':pid,'ko':'크랩 주먹밥','en':'Crab Rice Ball','retail':'5.99'}
+ for cid in ids['clients'].values():price_data['price_'+str(cid)]='3.50'
+ check(post(price_data)[0]==200,'통합 가격표 저장')
+ check(app('echo query("SELECT total_cents FROM biz_invoices WHERE id=1")->fetchColumn();').strip()=='3609','단가 수정 후 기존 인보이스 보존')
+ for page in ['biz','biz-plan','biz-production','biz-deliveries','biz-results','biz-invoices','biz-products','biz-clients','biz-invoice&id=1']:
   status,h,_=req('/?page='+page);check(status==200 and '화면을 불러오지 못했습니다' not in h,'화면 '+page)
  env=dict(os.environ,TEST_BASE=base,NODE_PATH='/workspace/browser-check/node_modules');r=subprocess.run(['node','tests/browser-business.cjs'],cwd=ROOT,env=env,text=True,capture_output=True);print(r.stdout);assert r.returncode==0,r.stderr
  info=subprocess.run(['pdfinfo','/tmp/rodem-business-invoice-max.pdf'],capture_output=True,text=True,check=True).stdout;check(bool(re.search(r'Pages:\s+1\b',info)),'최대 34개 긴 품목 A4 한 페이지')

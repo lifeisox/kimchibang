@@ -47,7 +47,8 @@ function expenseAction(): never {
    $keepArchived=$before&&$selectedSupplier>0&&$selectedSupplier===(int)$before['supplier_id']&&$vendor===$before['vendor']&&(int)query('SELECT active FROM bookkeeping_suppliers WHERE id=?',[$selectedSupplier])->fetchColumn()===0;$supplier=$keepArchived?['id'=>$selectedSupplier,'display'=>$vendor]:supplierResolve($vendor,$selectedSupplier);query('UPDATE expenses SET supplier_id=?,vendor=?,itc_limit_pct=? WHERE id=?',[$supplier['id'],$supplier['display'],$itcLimit,$id]);
    $attachment=expenseFile($_FILES['receipt']??[]);if($attachment)query('INSERT INTO expense_receipts (expense_id,storage_key,mime,original_name,sha256) VALUES (?,?,?,?,?)',[$id,...array_values($attachment)]);
    $learned=saveReceiptLearning($supplier['id'],$id,$ocr,$total,$hst);
-   $detail=['learning'=>$learned,'action'=>$before?'edit':'create','before'=>$before,'after'=>query('SELECT * FROM expenses WHERE id=?',[$id])->fetch(),'receipt'=>$attachment];
+   $logo=saveReceiptLogo($supplier['id'],$id);
+   $detail=['logo_learning'=>$logo,'learning'=>$learned,'action'=>$before?'edit':'create','before'=>$before,'after'=>query('SELECT * FROM expenses WHERE id=?',[$id])->fetch(),'receipt'=>$attachment];
   }
   query('INSERT INTO expense_events (expense_id,actor_id,detail) VALUES (?,?,?)',[$id,$_SESSION['user_id'],json_encode($detail,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);db()->commit();
  } catch(Throwable $e){if(db()->inTransaction())db()->rollBack();if($attachment){$f=expenseReceiptDirectory().'/'.$attachment['storage_key'];if(is_file($f))unlink($f);}throw $e;}
@@ -69,4 +70,10 @@ function expenseCsv(): never {
  if(empty($_SESSION['user_id'])){http_response_code(401);exit;}$year=(int)($_GET['year']??date('Y'));if($year<2000||$year>2100){http_response_code(422);exit;}$r=expenseReport($year);
  header('Content-Type: text/csv; charset=utf-8');header('Content-Disposition: attachment; filename="expenses-'.$year.'.csv"');$f=fopen('php://output','w');fwrite($f,"\xEF\xBB\xBF");fputcsv($f,['날짜','구입처','항목','Net Amount CAD','HST CAD','Other Tax CAD','Amount CAD','Business Use %','Income Tax Deductible %','ITC Limit %','ITC Status','Income Tax Treatment','Income Tax Reference','메모'],',','"','');
  foreach($r['rows'] as $e){$safe=fn($v)=>preg_match('/^(?:[\t\r\n]|\s*[=+\-@])/u',(string)$v)?"'".$v:$v;fputcsv($f,array_map($safe,[$e['expense_date'],$e['supplier_name'],$e['split_text'],number_format($e['subtotal_cents']/100,2,'.',''),number_format($e['hst_cents']/100,2,'.',''),number_format($e['other_tax_cents']/100,2,'.',''),number_format($e['total_cents']/100,2,'.',''),$e['business_pct'],$e['deductible_pct'],$e['itc_limit_pct'],$e['itc_status'],$e['tax_treatment_text'],$e['tax_reference_text'],$e['description']]),',','"','');}fclose($f);exit;
+}
+
+function expenseSupplierHistory(): never {
+ if(empty($_SESSION['user_id'])){http_response_code(401);exit;}
+ $id=filter_var($_GET['supplier_id']??0,FILTER_VALIDATE_INT);if(!$id||$id<1){http_response_code(422);exit;}
+ $rows=query('SELECT id,expense_date,total_cents,hst_cents,subtotal_cents,description FROM expenses WHERE supplier_id=? AND voided=0 ORDER BY expense_date DESC,id DESC LIMIT 5',[$id])->fetchAll();header('Content-Type: application/json; charset=utf-8');echo json_encode($rows,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);exit;
 }

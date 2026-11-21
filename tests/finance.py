@@ -33,6 +33,7 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  for _ in range(50):
   try:_,html,_=req();break
   except (OSError,urllib.error.URLError):time.sleep(.2)
+ check(req('/?api=expense-history&supplier_id=1')[0]==401,'로그인 전 거래 복사 후보 접근 차단')
  check(req('/?page=expense-receipt-view&id=1')[0]==401,'로그인 전 영수증 팝업 접근 차단')
  check(req('/?api=expense-receipt&id=1')[0]==401,'로그인 전 영수증 접근 차단')
  _,html,_=req(data={'action':'login','csrf':token(html),'username':'admin','password':'fixture-password-123'});csrf=token(html)
@@ -57,10 +58,11 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  check(req('/?page=bookkeeping-accounts',{'action':'accounting_delete','csrf':csrf,'id':aid,'version':1})[0]==200 and app('echo query("SELECT active FROM expense_categories WHERE id=?",['+aid+'])->fetchColumn();').strip()=='0','Account 삭제는 비활성화·기록 보존')
  print(app("""require 'app/expenses.php';db()->beginTransaction();$id=query('SELECT id FROM expenses LIMIT 1')->fetchColumn();$material=query('SELECT id FROM expense_categories WHERE name=?',['Material'])->fetchColumn();query('UPDATE expenses SET category_id=?,itc_limit_pct=50 WHERE id=?',[$material,$id]);$r=expenseReport(2026)['totals'];if($r['itc']!==325||$r['inventory']!==5325||$r['operating']!==0)throw new RuntimeException('Tax separation');db()->rollBack();echo 'PASS ITC Limit·Inventory/COGS 별도 집계';"""))
  # Corrected expense values teach labels, never literal amounts; everything stays in this fixture DB.
- learned=dict(data,id=str(eid),version='1',remember_receipt='1',receipt_rule_version='0',ocr_text='Learning Store\nTotal 113.00\nHST 13.00')
+ learned=dict(data,id=str(eid),version='1',remember_receipt='1',receipt_rule_version='0',receipt_no_hst_zero='1',ocr_text='Learning Store\nTotal 113.00\nHST 13.00')
  check(req('/?page=expense-edit&id='+str(eid),learned)[0]==200,'수정 거래에서 읽기 표기 자동 기억')
  rule=json.loads(app('require "app/expense-learning.php";echo json_encode(receiptRule((int)query("SELECT supplier_id FROM expenses WHERE id=1")->fetchColumn()));'))
  check(rule['total_label']=='Total' and rule['hst_label']=='HST' and int(rule['version'])==1,'Amount·HST 표기만 저장·금액 미저장')
+ check(int(rule['missing_hst_zero'])==1 and app('echo query("SELECT hst_cents FROM expenses WHERE id=1")->fetchColumn();').strip()=='1300','현재 HST를 보존하면서 향후 HST 없는 경우 0 규칙 저장')
  check(req('/?page=expense-edit&id='+str(eid),dict(learned,version='2'))[0]==422,'동시 변경된 기억 규칙 덮어쓰기 차단')
  check(req('/?page=expense-edit&id='+str(eid),dict(learned,version='2',receipt_rule_version='1',forget_receipt_rule='1'))[0]==200,'기억 규칙 초기화')
  # Real workbooks are copied only into private fixture paths; all imports use this isolated DB.

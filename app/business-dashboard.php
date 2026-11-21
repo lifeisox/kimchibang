@@ -1,0 +1,10 @@
+<?php
+$tomorrow=date('Y-m-d',strtotime('tomorrow'));
+$planned=(int)query('SELECT COALESCE(SUM(planned),0) FROM biz_deliveries WHERE day=? AND cancelled=0',[$tomorrow])->fetchColumn();
+$waiting=(int)query('SELECT COUNT(*) FROM biz_deliveries WHERE sent=0 AND cancelled=0')->fetchColumn();
+$balance=(int)query('SELECT COALESCE(SUM(i.total_cents-COALESCE(p.paid,0)),0) FROM biz_invoices i LEFT JOIN (SELECT invoice_id,SUM(cents) paid FROM biz_payments GROUP BY invoice_id) p ON p.invoice_id=i.id')->fetchColumn();
+$pending=(int)query('SELECT COUNT(*) FROM biz_sales WHERE invoice_id IS NULL')->fetchColumn();
+?>
+<div class="biz-summary-grid"><article><span>내일 생산 예정</span><strong><?=$planned?><small>개</small></strong><a href="/?page=biz-production">생산량 확인 →</a></article><article><span>납품 확인 대기</span><strong><?=$waiting?><small>품목</small></strong><a href="/?page=biz-deliveries">납품 처리 →</a></article><article><span>받을 금액</span><strong><?=money($balance)?></strong><a href="/?page=biz-invoices">인보이스·수금 →</a></article><article><span>정산 대기 판매</span><strong><?=$pending?><small>건</small></strong><a href="/?page=biz-invoices">기간 정산 →</a></article></div>
+<section class="panel"><h2>오늘 할 일</h2><div class="biz-steps"><a href="/?page=biz-plan"><b>1</b><strong>생산 계획</strong><span>거래처별 내일 수량 입력</span></a><a href="/?page=biz-deliveries"><b>2</b><strong>납품 확인</strong><span>실제로 전달한 수량 확인</span></a><a href="/?page=biz-results"><b>3</b><strong>저녁 판매 마감</strong><span>실판매·반품·0개 판매 기록</span></a><a href="/?page=biz-invoices"><b>4</b><strong>정산·수금</strong><span>인보이스 발행과 입금 기록</span></a></div></section>
+<section class="panel"><h2>거래처별 업무</h2><div class="biz-policy-grid"><article><h3>OK Mart</h3><p>김치: 납품 후 즉시 청구</p><p>김밥·삼각김밥·주먹밥: 실판매를 주간 정산</p><span class="badge">20% 할인 후 HST</span></article><article><h3>Popularitea</h3><p>김치 납품분과 실제 판매분을 월 정산</p><p>직원 통보 확인 후 Staff Purchases 별도 차감</p><span class="badge">월초 직원 통보 후 발행</span></article><article><h3>Hungry Ninja · 개인</h3><p>납품 확인 후 인보이스 인쇄</p><p>개인 할인은 건별 입력 · 현금/eTransfer 수금</p><span class="badge">김치 HST 0% · 나머지 13%</span></article></div></section>
