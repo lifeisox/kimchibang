@@ -64,9 +64,62 @@ try:
  for cid in ids['clients'].values():price_data['price_'+str(cid)]='3.50'
  check(post(price_data)[0]==200,'통합 가격표 저장')
  check(app('echo query("SELECT total_cents FROM biz_invoices WHERE id=1")->fetchColumn();').strip()=='3609','단가 수정 후 기존 인보이스 보존')
+ # A product without any transaction can be removed, including after reinitialization.
+ check(post({'action':'biz_product_save','id':0,'category':'kimchi','ko':'삭제 시험상품','en':'Deletable Fixture','retail':'1.00'})[0]==200,'미사용 상품 추가')
+ deletable=int(app('echo query("SELECT MAX(id) FROM biz_products")->fetchColumn();'))
+ check(post({'action':'biz_product_delete','id':deletable})[0]==200,'미사용 상품 삭제')
+ # Document-level workflow and deletion guards use real HTTP, not direct function mocks.
+ check(post({'action':'biz_client_delete','id':ids['clients']['HN']})[0]==422,'거래내역이 있는 거래처 삭제 차단')
+ check(post({'action':'biz_client','id':0,'name':'삭제용 거래처','email':'','address':''})[0]==200,'미사용 거래처 추가')
+ unused=int(app('echo query("SELECT MAX(id) FROM biz_clients")->fetchColumn();'))
+ check(post({'action':'biz_client_delete','id':unused})[0]==200 and app('echo query("SELECT active FROM biz_clients WHERE id=?",['+str(unused)+'])->fetchColumn();').strip()=='0','미사용 거래처 삭제')
+ check(post({'action':'biz_product_delete','id':pid})[0]==422,'거래내역이 있는 상품 삭제 차단')
+ newproduct={'action':'biz_product_save','id':0,'category':'etc','ko':'시험 기타상품','en':'Fixture Other','retail':'12.50','hst_bp':''}
+ check(post(newproduct)[0]==200,'Etc 상품 추가·세율 미확정 허용')
+ newpid=int(app('echo query("SELECT MAX(id) FROM biz_products")->fetchColumn();'))
+ # Unsaved tax rate cannot silently create an invoice.
+ batch=uuid.uuid4().hex
+ order={'action':'biz_order_save','batch_key':'','request_key':batch,'client_id':person,'day':'2026-12-01','discount':'10','notes':'주문 비고','qty['+str(newpid)+']':2,'qty['+str(ids['products']['Beef Kimbap'])+']':1}
+ check(post(order)[0]==200,'주문서 입력과 납품서 자동 생성')
+ check(post(order)[0]==200 and app('echo query("SELECT COUNT(*) FROM biz_orders WHERE batch_key=?",["'+batch+'"])->fetchColumn();').strip()=='1','주문서 재전송 중복 방지')
+ check(req('/?page=biz-document-print&batch='+batch)[0]==200,'납품 전 인보이스 미리보기')
+ check(post({'action':'biz_document_confirm','batch_key':batch,'version':1})[0]==422,'Etc HST 미확정 납품 차단')
+ check(app('echo query("SELECT SUM(sent) FROM biz_deliveries WHERE batch_key=?",["'+batch+'"])->fetchColumn();').strip()=='0','실패한 납품은 전체 롤백')
+ check(post(dict(newproduct,id=newpid,hst_bp='1300'))[0]==200,'미납품 상품 HST 확인 후 재시도 가능')
+ check(post({'action':'biz_order_delete','batch_key':batch,'version':1})[0]==200,'주문서 삭제와 납품서 동시 취소')
+ check(app('echo query("SELECT COUNT(*) FROM biz_deliveries WHERE batch_key=? AND cancelled=0",["'+batch+'"])->fetchColumn();').strip()=='0','취소 주문의 생산·납품 제외')
+ # Standard products synchronize until the delivery document is edited.
+ batch=uuid.uuid4().hex;kimchi=ids['products']['Sliced Kimchi'];beef=ids['products']['Beef Kimbap']
+ order={'action':'biz_order_save','batch_key':'','request_key':batch,'client_id':person,'day':'2026-12-02','discount':'10','notes':'첫 주문','qty['+str(kimchi)+']':2,'qty['+str(beef)+']':1}
+ check(post(order)[0]==200,'주문서 두 품목 입력')
+ update=dict(order,**{'batch_key':batch,'version':1,'day':'2026-12-03','notes':'수정 주문','qty['+str(kimchi)+']':3})
+ check(post(update)[0]==200,'주문서 수정 시 납품서 동기화')
+ check(app('echo query("SELECT SUM(planned) FROM biz_deliveries WHERE batch_key=? AND cancelled=0",["'+batch+'"])->fetchColumn();').strip()=='4','납품 수량 동기화 확인')
+ check(post(update)[0]==422,'주문서 동시 수정 충돌 차단')
+ doc={'action':'biz_document_save','batch_key':batch,'version':2,'day':'2026-12-04','discount':'5','notes':'실제 납품 변경','qty['+str(kimchi)+']':4,'qty['+str(beef)+']':2}
+ check(post(doc)[0]==200,'납품서 직접 수정')
+ check(app('echo query("SELECT order_day FROM biz_orders WHERE batch_key=?",["'+batch+'"])->fetchColumn();').strip()=='2026-12-03' and app('echo query("SELECT order_discount_bp FROM biz_orders WHERE batch_key=?",["'+batch+'"])->fetchColumn();').strip()=='1000','납품서 수정 후 원 주문의 날짜·할인율 보존')
+ check(post(dict(update,version=3))[0]==422,'납품서 수정 후 주문서 변경 차단')
+ check(post({'action':'biz_order_delete','batch_key':batch,'version':3})[0]==422,'납품서 수정 후 주문서 삭제 차단')
+ check(post({'action':'biz_document_confirm','batch_key':batch,'version':2})[0]==422,'낡은 납품서 확정 차단')
+ check(post({'action':'biz_document_confirm','batch_key':batch,'version':3})[0]==200,'납품서 전체 확정·직매출 인보이스 발행')
+ check(app('echo query("SELECT SUM(delivered) FROM biz_deliveries WHERE batch_key=?",["'+batch+'"])->fetchColumn();').strip()=='6','납품서 실제 수량 반영')
+ check(post(dict(doc,version=4))[0]==422,'납품 완료 후 납품서 수정 차단')
+ check(post({'action':'biz_product_save','id':kimchi,'category':'kimbap','ko':'맛김치','en':'Sliced Kimchi','retail':'4.99'})[0]==422,'거래 이력이 있는 상품의 과세 분류 변경 차단')
+ # Standalone add, edit and remove client prices.
+ price={'action':'biz_price','client_id':person,'product_id':kimchi,'price':'4.49'}
+ check(post(price)[0]==200 and 'biz-prices' in post(price)[2],'독립 납품가 추가·수정 화면')
+ check(post(dict(price,action='biz_price_delete'))[0]==200,'납품가 삭제')
+ # Re-running initialization must not recreate renamed/deleted products or lose documents.
+ count=app('echo query("SELECT COUNT(*) FROM biz_products")->fetchColumn();').strip()
+ cmd(['exec','-T','-e','APP_ENABLE_BUSINESS=1','-e','DB_NAME='+name,'web','php','scripts/init.php'])
+ check(app('echo query("SELECT COUNT(*) FROM biz_products")->fetchColumn();').strip()==count and app('echo query("SELECT active FROM biz_products WHERE id=?",['+str(deletable)+'])->fetchColumn();').strip()=='0','반복 초기화 시 상품·기존 문서 보존')
+ for page in ['biz-order','biz-prices','biz-order&batch='+batch,'biz-delivery&batch='+batch,'biz-document-print&batch='+batch,'expense-edit','orders','customers','expense-report']:
+  status,h,_=req('/?page='+page);check(status==200 and '화면을 불러오지 못했습니다' not in h and 'class="today"' not in h,'새 화면·제목 날짜 제거 '+page)
  for page in ['biz','biz-plan','biz-production','biz-deliveries','biz-results','biz-invoices','biz-products','biz-clients','biz-invoice&id=1']:
   status,h,_=req('/?page='+page);check(status==200 and '화면을 불러오지 못했습니다' not in h,'화면 '+page)
  env=dict(os.environ,TEST_BASE=base,NODE_PATH='/workspace/browser-check/node_modules');r=subprocess.run(['node','tests/browser-business.cjs'],cwd=ROOT,env=env,text=True,capture_output=True);print(r.stdout);assert r.returncode==0,r.stderr
+ document_info=subprocess.run(['pdfinfo','/tmp/rodem-business-document.pdf'],capture_output=True,text=True,check=True).stdout;check(bool(re.search(r'Pages:\s+1\b',document_info)),'납품서 금액 미리보기 A4 한 페이지')
  info=subprocess.run(['pdfinfo','/tmp/rodem-business-invoice-max.pdf'],capture_output=True,text=True,check=True).stdout;check(bool(re.search(r'Pages:\s+1\b',info)),'최대 34개 긴 품목 A4 한 페이지')
 finally:
  if container:subprocess.run(['docker','rm','-f',container],capture_output=True)

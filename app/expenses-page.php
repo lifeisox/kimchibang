@@ -2,7 +2,9 @@
 require_once __DIR__.'/expenses.php';$year=(int)($_GET['year']??date('Y'));if($year<2000||$year>2100)$year=(int)date('Y');
 $categories=bookkeepingAccounts();$suppliers=bookkeepingSuppliers();
 ?>
-<?php if($page==='expense-edit'):
+<?php if($page==='expense-edit'): ?>
+<p class="no-print"><a href="/?page=expenses">← 기장 내역으로 돌아가기</a></p>
+<?php
 $id=(int)($_GET['id']??$_POST['id']??0);$r=$id?query('SELECT * FROM expenses WHERE id=?',[$id])->fetch():[];if($id&&!$r){echo '<p>비용 기록이 없습니다.</p>';return;}$r=$r?:[];
 $copied=false;
 if(!$id&&isset($_GET['copy'])){$source=query('SELECT * FROM expenses WHERE id=? AND voided=0',[(int)$_GET['copy']])->fetch();if(!$source){http_response_code(404);echo '<p>복사할 거래가 없습니다.</p>';return;}
