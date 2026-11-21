@@ -68,7 +68,7 @@ function expenseReport(int $year): array {
 }
 function expenseCsv(): never {
  if(empty($_SESSION['user_id'])){http_response_code(401);exit;}$year=(int)($_GET['year']??date('Y'));if($year<2000||$year>2100){http_response_code(422);exit;}$r=expenseReport($year);
- header('Content-Type: text/csv; charset=utf-8');header('Content-Disposition: attachment; filename="expenses-'.$year.'.csv"');$f=fopen('php://output','w');fwrite($f,"\xEF\xBB\xBF");fputcsv($f,['날짜','구입처','항목','Net Amount CAD','HST CAD','Other Tax CAD','Amount CAD','Business Use %','Income Tax Deductible %','ITC Limit %','ITC Status','Income Tax Treatment','Income Tax Reference','메모'],',','"','');
+ header('Content-Type: text/csv; charset=utf-8');header('Content-Disposition: attachment; filename="expenses-'.$year.'.csv"');$f=fopen('php://output','w');fwrite($f,"\xEF\xBB\xBF");fputcsv($f,['날짜','구입처','항목','Net Amount','HST','Other Tax','Amount','Business Use %','Income Tax Deductible %','ITC Limit %','ITC Status','Income Tax Treatment','Income Tax Reference','메모'],',','"','');
  foreach($r['rows'] as $e){$safe=fn($v)=>preg_match('/^(?:[\t\r\n]|\s*[=+\-@])/u',(string)$v)?"'".$v:$v;fputcsv($f,array_map($safe,[$e['expense_date'],$e['supplier_name'],$e['split_text'],number_format($e['subtotal_cents']/100,2,'.',''),number_format($e['hst_cents']/100,2,'.',''),number_format($e['other_tax_cents']/100,2,'.',''),number_format($e['total_cents']/100,2,'.',''),$e['business_pct'],$e['deductible_pct'],$e['itc_limit_pct'],$e['itc_status'],$e['tax_treatment_text'],$e['tax_reference_text'],$e['description']]),',','"','');}fclose($f);exit;
 }
 

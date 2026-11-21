@@ -1,6 +1,6 @@
 <?php
 function bizCategories(): array {return ['kimchi'=>'Kimchi','kimbap'=>'Kimbap','triangle'=>'Triangle Kimbap','riceball'=>'Rice Ball','etc'=>'Etc'];}
-function bizKo(array $p): string {return trim($p['ko'].' '.($p['pack']==='1개'?'':$p['pack']));}
+function bizKo(array $p): string {return $p['ko'];}
 function bizReferenced(string $kind,int $id): bool {
  if($kind==='client')return (bool)query('SELECT 1 FROM biz_deliveries WHERE client_id=? UNION SELECT 1 FROM biz_invoices WHERE client_id=? UNION SELECT 1 FROM biz_orders WHERE client_id=? LIMIT 1',[$id,$id,$id])->fetchColumn();
  return (bool)query('SELECT 1 FROM biz_deliveries WHERE product_id=? LIMIT 1',[$id])->fetchColumn();
@@ -50,6 +50,14 @@ function bizWorkflowAction(string $action): ?string {
    if($p&&bizProductPosted($id)&&($category!==$p['category']||$tax!==($p['hst_bp']===null?null:(int)$p['hst_bp'])))throw new InvalidArgumentException('거래내역이 있는 상품의 분류·HST는 변경할 수 없습니다. 새 상품으로 등록하세요.');
    $retail=textfield($_POST,'retail',20);$values=[$category,textfield($_POST,'ko',100,true),textfield($_POST,'en',100,true),$retail===''?null:cents($retail),$tax];if($id)query('UPDATE biz_products SET category=?,ko=?,en=?,retail_cents=?,hst_bp=? WHERE id=?',[...$values,$id]);else query("INSERT INTO biz_products (category,ko,en,retail_cents,hst_bp,pack) VALUES (?,?,?,?,?,'')",$values);
   }return 'biz-products';
+ }
+ if($action==='biz_prices_add'){
+  $cid=positiveInt($_POST['client_id']??0,1,PHP_INT_MAX);$category=textfield($_POST,'category',20,true);
+  if(!isset(bizCategories()[$category])||!query('SELECT id FROM biz_clients WHERE id=? AND active=1',[$cid])->fetchColumn())throw new InvalidArgumentException('거래처와 분류를 확인하세요.');
+  if(!is_array($_POST['prices']??null)||!$_POST['prices'])throw new InvalidArgumentException('추가할 납품가를 먼저 입력하거나 일괄복사하세요.');
+  foreach($_POST['prices'] as $pid=>$value){$pid=positiveInt($pid,1,PHP_INT_MAX);$amount=cents($value);if(!query('SELECT id FROM biz_products WHERE id=? AND category=? AND active=1',[$pid,$category])->fetchColumn())throw new InvalidArgumentException('상품 분류를 확인하세요.');
+   query('INSERT INTO biz_prices (client_id,product_id,cents) VALUES (?,?,?) ON DUPLICATE KEY UPDATE cents=cents',[$cid,$pid,$amount]);
+  }return 'biz-prices&client_id='.$cid;
  }
  if(in_array($action,['biz_price','biz_price_delete'],true)){
   $cid=positiveInt($_POST['client_id']??0,1,PHP_INT_MAX);$pid=positiveInt($_POST['product_id']??0,1,PHP_INT_MAX);

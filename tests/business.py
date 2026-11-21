@@ -110,6 +110,11 @@ try:
  price={'action':'biz_price','client_id':person,'product_id':kimchi,'price':'4.49'}
  check(post(price)[0]==200 and 'biz-prices' in post(price)[2],'독립 납품가 추가·수정 화면')
  check(post(dict(price,action='biz_price_delete'))[0]==200,'납품가 삭제')
+ # Bulk prices never overwrite a previously registered price, even on replay.
+ bulk={'action':'biz_prices_add','client_id':person,'category':'kimchi','prices['+str(kimchi)+']':'6.25'}
+ check(post(bulk)[0]==200,'분류별 납품가 일괄 추가')
+ check(post(dict(bulk,**{'prices['+str(kimchi)+']':'9.99'}))[0]==200 and app('echo query("SELECT cents FROM biz_prices WHERE client_id=? AND product_id=?",['+str(person)+','+str(kimchi)+'])->fetchColumn();').strip()=='625','일괄 추가 재전송 시 기존 단가 보존')
+ check(post(dict(bulk,category='kimbap'))[0]==422,'다른 분류의 일괄 등록 차단')
  # Re-running initialization must not recreate renamed/deleted products or lose documents.
  count=app('echo query("SELECT COUNT(*) FROM biz_products")->fetchColumn();').strip()
  cmd(['exec','-T','-e','APP_ENABLE_BUSINESS=1','-e','DB_NAME='+name,'web','php','scripts/init.php'])

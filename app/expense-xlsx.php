@@ -3,7 +3,7 @@ function expenseXlsxBytes(array $rows,int $year): string {
  $xml=fn($v)=>htmlspecialchars(preg_replace('/[^\x09\x0A\x0D\x20-\x{D7FF}\x{E000}-\x{FFFD}]/u','',(string)$v),ENT_XML1|ENT_QUOTES,'UTF-8');
  $files=[];$sheets='';$rels='';$types='';
  for($m=1;$m<=12;$m++){
-  $data=[['Date','구매처','Account','Amount CAD','HST CAD','Other Tax CAD','Net Amount CAD','메모']];$sum=[0,0,0,0];
+  $data=[['Date','구매처','Account','Amount','HST','Other Tax','Net Amount','메모']];$sum=[0,0,0,0];
   foreach($rows as $r){if((int)substr($r['expense_date'],5,2)!==$m)continue;$nums=array_map(fn($k)=>(int)$r[$k]/100,['total_cents','hst_cents','other_tax_cents','subtotal_cents']);foreach($nums as $i=>$n)$sum[$i]+=$n;$data[]=[$r['expense_date'],$r['supplier_name'],($r['account_text']??$r['category']??''),...$nums,$r['description']];}
   $data[]=['합계','','',...$sum,''];$body='';foreach($data as $ri=>$row){$body.='<row r="'.($ri+1).'">';foreach($row as $ci=>$v){$ref=chr(65+$ci).($ri+1);$body.=is_float($v)||is_int($v)?'<c r="'.$ref.'" s="1"><v>'.number_format($v,2,'.','').'</v></c>':'<c r="'.$ref.'" t="inlineStr"><is><t xml:space="preserve">'.$xml($v).'</t></is></c>';}$body.='</row>';}
   $files['xl/worksheets/sheet'.$m.'.xml']='<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" state="frozen"/></sheetView></sheetViews><cols><col min="1" max="1" width="14" customWidth="1"/><col min="2" max="3" width="28" customWidth="1"/><col min="4" max="7" width="18" customWidth="1"/><col min="8" max="8" width="55" customWidth="1"/></cols><sheetData>'.$body.'</sheetData></worksheet>';

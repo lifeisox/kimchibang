@@ -172,3 +172,16 @@ document.querySelectorAll('[data-biz-qty-grid]').forEach(grid=>{
 });
 document.querySelectorAll('[data-biz-copy-price]').forEach(button=>button.addEventListener('click',()=>{const input=button.closest('form').querySelector('[name="price"]');input.value=button.dataset.bizCopyPrice;input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();}));
 document.querySelectorAll('[data-biz-category]').forEach(select=>select.addEventListener('change',()=>{select.closest('form').querySelector('.biz-etc-tax').hidden=select.value!=='etc';}));
+document.querySelectorAll('[data-biz-price-card]').forEach(card=>{
+ const rows=()=>[...card.querySelectorAll('form[data-unregistered="1"]')];
+ card.querySelector('[data-biz-copy-all]').addEventListener('click',()=>rows().forEach(row=>{const value=row.querySelector('[data-biz-copy-price]').dataset.bizCopyPrice;if(value!=='')row.querySelector('[name="price"]').value=value;}));
+ card.querySelector('[data-biz-add-all]').addEventListener('click',()=>{
+  const pending=rows().filter(row=>row.querySelector('[name="price"]').value!=='');
+  if(!pending.length){window.alert('미등록 상품의 납품가를 입력하거나 일괄복사해 주세요.');return;}
+  if(pending.some(row=>!row.querySelector('[name="price"]').reportValidity()))return;
+  const form=document.createElement('form');form.method='post';
+  const add=(name,value)=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.append(input);};
+  add('csrf',card.querySelector('[name="csrf"]').value);add('action','biz_prices_add');add('client_id',card.dataset.client);add('category',card.dataset.category);
+  pending.forEach(row=>add('prices['+row.dataset.product+']',row.querySelector('[name="price"]').value));document.body.append(form);form.submit();
+ });
+});

@@ -43,7 +43,7 @@ export function parseReceipt(text,suppliers=[],selectedSupplierId=0){
  if(new Set(taxes.map(n=>n.toFixed(2))).size>1){delete out.fields.hst;out.warnings.push('서로 다른 HST 금액이 있습니다. 합계 세액을 확인하세요.');}
  if(new Set(totals.map(n=>n.toFixed(2))).size>1)out.warnings.push('여러 합계 금액이 있습니다. 선택한 Amount가 영수증 전체 금액인지 확인하세요.');
  out.supplier=suppliers.find(s=>Number(s.id)===Number(selectedSupplierId))||(out.fields.vendor?matchSupplier(out.fields.vendor,suppliers):null);applyReceiptRule(out,lines,out.supplier);
- if(/\b(USD|US\s*dollars?|CNY|RMB|KRW|EUR|GBP)\b|[￥¥€£₩]/i.test(text)){delete out.fields.total;delete out.fields.hst;delete out.fields.other_tax;out.warnings.push('외화 금액은 CAD로 적용하지 않습니다. 카드에 청구된 CAD Amount를 입력하세요.');}
+ if(/\b(USD|US\s*dollars?|CNY|RMB|KRW|EUR|GBP)\b|[￥¥€£₩]/i.test(text)){delete out.fields.total;delete out.fields.hst;delete out.fields.other_tax;out.warnings.push('외화 금액은 자동 적용하지 않습니다. 카드에 청구된 캐나다 달러 금액을 입력하세요.');}
  if(out.fields.total&&out.fields.hst&&Number(out.fields.hst)>Number(out.fields.total)){delete out.fields.hst;out.warnings.push('HST가 Amount보다 커서 적용하지 않았습니다.');}
  if(!out.fields.total)out.warnings.push('Amount를 확인하세요.');if(!out.fields.hst)out.warnings.push('HST가 없거나 읽히지 않았습니다. 영수증과 대조하세요.');
  return out;
