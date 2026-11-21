@@ -68,6 +68,8 @@ try:
  check(post({'action':'biz_product_save','id':0,'category':'kimchi','ko':'삭제 시험상품','en':'Deletable Fixture','retail':'1.00'})[0]==200,'미사용 상품 추가')
  deletable=int(app('echo query("SELECT MAX(id) FROM biz_products")->fetchColumn();'))
  check(post({'action':'biz_product_delete','id':deletable})[0]==200,'미사용 상품 삭제')
+ app('foreach(query("SELECT id,retail_cents FROM biz_products WHERE id IN (1,'+str(ids['products']['Sliced Kimchi'])+','+str(ids['products']['Beef Kimbap'])+')")->fetchAll() as $p)query("INSERT INTO biz_prices VALUES (?,?,?) ON DUPLICATE KEY UPDATE cents=cents",['+str(person)+',$p["id"],$p["retail_cents"]]);')
+ check(post({'action':'biz_order_save','batch_key':'','request_key':uuid.uuid4().hex,'client_id':person,'day':'2026-12-01','qty['+str(ids['products']['Tuna Kimbap'])+']':1})[0]==422,'거래처 납품가 미등록 상품 주문 차단')
  # Document-level workflow and deletion guards use real HTTP, not direct function mocks.
  check(post({'action':'biz_client_delete','id':ids['clients']['HN']})[0]==422,'거래내역이 있는 거래처 삭제 차단')
  check(post({'action':'biz_client','id':0,'name':'삭제용 거래처','email':'','address':''})[0]==200,'미사용 거래처 추가')
@@ -78,6 +80,7 @@ try:
  check(post(newproduct)[0]==200,'Etc 상품 추가·세율 미확정 허용')
  newpid=int(app('echo query("SELECT MAX(id) FROM biz_products")->fetchColumn();'))
  # Unsaved tax rate cannot silently create an invoice.
+ app('query("INSERT INTO biz_prices VALUES (?,?,1250)",['+str(person)+','+str(newpid)+']);')
  batch=uuid.uuid4().hex
  order={'action':'biz_order_save','batch_key':'','request_key':batch,'client_id':person,'day':'2026-12-01','discount':'10','notes':'주문 비고','qty['+str(newpid)+']':2,'qty['+str(ids['products']['Beef Kimbap'])+']':1}
  check(post(order)[0]==200,'주문서 입력과 납품서 자동 생성')

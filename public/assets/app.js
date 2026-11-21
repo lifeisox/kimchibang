@@ -168,7 +168,7 @@ document.querySelectorAll('[data-biz-qty-grid]').forEach(grid=>{
   const inputs=[...grid.querySelectorAll('input[type="number"]')];
   const update=()=>{let total=0;grid.querySelectorAll('.biz-quantity-category').forEach(group=>{const sum=[...group.querySelectorAll('input')].reduce((n,i)=>n+Math.max(0,Number(i.value)||0),0);group.querySelector('[data-biz-total]').textContent=sum.toLocaleString()+'개';total+=sum;});grid.querySelector('[data-biz-grand-total]').textContent=total.toLocaleString()+'개';};
   grid.addEventListener('input',update);update();
-  inputs.forEach((input,index)=>{input.addEventListener('focus',()=>input.select());input.addEventListener('keydown',event=>{let target;if(event.key==='Enter'||event.key==='ArrowDown')target=index+1;else if(event.key==='ArrowUp')target=index-1;else return;event.preventDefault();inputs[target]?.focus();});});
+  inputs.forEach((input,index)=>{input.addEventListener('focus',()=>input.select());input.addEventListener('keydown',event=>{let target;if(event.key==='Enter'||event.key==='ArrowDown')target=index+1;else if(event.key==='ArrowUp')target=index-1;else return;event.preventDefault();const direction=target>index?1:-1;while(inputs[target]&&(inputs[target].disabled||!inputs[target].getClientRects().length))target+=direction;inputs[target]?.focus();});});
 });
 document.querySelectorAll('[data-biz-copy-price]').forEach(button=>button.addEventListener('click',()=>{const input=button.closest('form').querySelector('[name="price"]');input.value=button.dataset.bizCopyPrice;input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();}));
 document.querySelectorAll('[data-biz-category]').forEach(select=>select.addEventListener('change',()=>{select.closest('form').querySelector('.biz-etc-tax').hidden=select.value!=='etc';}));
@@ -185,3 +185,13 @@ document.querySelectorAll('[data-biz-price-card]').forEach(card=>{
   pending.forEach(row=>add('prices['+row.dataset.product+']',row.querySelector('[name="price"]').value));document.body.append(form);form.submit();
  });
 });
+
+const orderPriceData=document.querySelector('#biz-order-prices');
+if(orderPriceData){
+ const data=JSON.parse(orderPriceData.textContent),form=orderPriceData.closest('form'),select=form.querySelector('[name="client_id"]'),grid=form.querySelector('[data-biz-qty-grid]');
+ const update=()=>{const cid=Number(select.value),allowed=new Set(data.clients[cid]||[]);if(cid===data.original_client)data.original_items.forEach(id=>allowed.add(id));let shown=0;
+  grid.querySelectorAll('[data-biz-product]').forEach(row=>{const show=allowed.has(Number(row.dataset.bizProduct));row.hidden=!show;const input=row.querySelector('input');input.disabled=!show;if(!show)input.value=0;else shown++;});
+  grid.querySelectorAll('.biz-quantity-category').forEach(group=>group.hidden=![...group.querySelectorAll('[data-biz-product]')].some(row=>!row.hidden));
+  document.querySelector('#biz-order-products-note').textContent=!cid?'거래처를 먼저 선택해 주세요.':shown?'':'등록된 납품가가 없습니다. 납품가 관리에서 먼저 등록해 주세요.';grid.dispatchEvent(new Event('input',{bubbles:true}));
+ };select.addEventListener('change',update);update();
+}
