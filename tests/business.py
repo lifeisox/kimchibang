@@ -122,6 +122,27 @@ try:
  count=app('echo query("SELECT COUNT(*) FROM biz_products")->fetchColumn();').strip()
  cmd(['exec','-T','-e','APP_ENABLE_BUSINESS=1','-e','DB_NAME='+name,'web','php','scripts/init.php'])
  check(app('echo query("SELECT COUNT(*) FROM biz_products")->fetchColumn();').strip()==count and app('echo query("SELECT active FROM biz_products WHERE id=?",['+str(deletable)+'])->fetchColumn();').strip()=='0','반복 초기화 시 상품·기존 문서 보존')
+ # Date-filtered deliveries, manual unit prices and delivery-level collections.
+ newbatch=uuid.uuid4().hex
+ check(post({'action':'biz_order_save','batch_key':'','request_key':newbatch,'client_id':person,'day':'2026-12-05','qty['+str(kimchi)+']':2})[0]==200,'수금 시험 주문 생성')
+ check(newbatch in req('/?page=biz-deliveries&day=2026-12-06')[1] and newbatch not in req('/?page=biz-deliveries&day=2026-12-04')[1],'미납품 목록에 기준일 이전 포함·이후 제외')
+ check(post({'action':'biz_document_save','batch_key':newbatch,'version':1,'day':'2026-12-05','discount':'0','qty['+str(kimchi)+']':2,'unit['+str(kimchi)+']':'7.25'})[0]==200,'납품서 개별 단가 수정')
+ check('$14.50' in req('/?page=biz-document-print&batch='+newbatch)[1],'납품서 미리보기에 수정 단가 반영')
+ check(post({'action':'biz_document_confirm','batch_key':newbatch,'version':2})[0]==200,'수정 단가로 납품 확정')
+ invoice_id=int(app('echo query("SELECT MAX(id) FROM biz_invoices")->fetchColumn();'))
+ check(app('echo query("SELECT total_cents FROM biz_invoices WHERE id=?",['+str(invoice_id)+'])->fetchColumn();').strip()=='1450','납품 단가가 실제 인보이스에 반영')
+ check(newbatch not in req('/?page=biz-deliveries&day=2026-12-06')[1] and newbatch in req('/?page=biz-deliveries&day=2026-12-05&scope=all')[1],'납품 완료 목록 제외·전체 보기 해당일 포함')
+ check('RN'+str(invoice_id) in req('/?page=biz-collections')[1],'납품서별 미수금 목록')
+ check(post({'action':'biz_payment','id':invoice_id,'amount':'4.50','day':'2026-12-05','method':'cash','return_to':'collections','request_key':uuid.uuid4().hex})[2].endswith('biz-collections'),'목록에서 부분 입금 처리 후 복귀')
+ check(post({'action':'biz_payment','id':invoice_id,'amount':'10.00','day':'2026-12-05','method':'etransfer','return_to':'collections','request_key':uuid.uuid4().hex})[0]==200 and ('RN'+str(invoice_id)+'</a>') not in req('/?page=biz-collections')[1],'잔액 수금 후 목록에서 제외')
+ pendingbatch=uuid.uuid4().hex
+ check(post({'action':'biz_order_save','batch_key':'','request_key':pendingbatch,'client_id':person,'day':'2026-12-09','qty['+str(kimchi)+']':3})[0]==200,'생산 대상 미납품 주문 생성')
+ production=req('/?page=biz-production&day=2026-12-09&batches[]='+pendingbatch+'&calculate=orders')[1]
+ check('>3</td>' in production and pendingbatch in production,'선택 주문으로 생산량 계산')
+ sidebar=req('/?page=biz-plan')[1].split('</aside>')[0]
+ check('href="/?page=biz-production"' not in sidebar and 'href="/?page=biz-results"' not in sidebar and '납품서별 수금' in sidebar and '위탁판매 정산·수금' in sidebar,'업무 메뉴 정리와 수금 메뉴 추가')
+ simulation=req('/?page=biz-production&calculate=simulate&qty['+str(kimchi)+']=7')[1]
+ check('생산 계획' in simulation and '>7</td>' in simulation,'생산 시뮬레이션 수량 계산')
  for page in ['biz-order','biz-prices','biz-order&batch='+batch,'biz-delivery&batch='+batch,'biz-document-print&batch='+batch,'expense-edit','orders','customers','expense-report']:
   status,h,_=req('/?page='+page);check(status==200 and '화면을 불러오지 못했습니다' not in h and 'class="today"' not in h,'새 화면·제목 날짜 제거 '+page)
  for page in ['biz','biz-plan','biz-production','biz-deliveries','biz-results','biz-invoices','biz-products','biz-clients','biz-invoice&id=1']:

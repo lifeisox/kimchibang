@@ -39,3 +39,4 @@ foreach(query('SELECT d.batch_key,MIN(d.client_id) client_id,MIN(d.day) day,MIN(
  $items=[];foreach(query('SELECT product_id,planned FROM biz_deliveries WHERE batch_key=?',[$batch['batch_key']])->fetchAll() as $line)$items[$line['product_id']]=(int)$line['planned'];
  query('INSERT INTO biz_orders (batch_key,client_id,order_date,day,order_day,discount_bp,order_discount_bp,items,manual_edited,cancelled,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[$batch['batch_key'],$batch['client_id'],$batch['day'],$batch['day'],$batch['day'],$batch['discount_bp'],$batch['discount_bp'],json_encode($items,JSON_THROW_ON_ERROR),$batch['edited'],$batch['cancelled'],$batch['created_by']]);
 }
+if(!query('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?',['biz_deliveries','unit_cents'])->fetch())db()->exec('ALTER TABLE biz_deliveries ADD COLUMN unit_cents INT NULL');

@@ -166,7 +166,7 @@ document.querySelector('#biz-settlement-client')?.addEventListener('change',even
 // Sales order grids: quantity totals and spreadsheet-like keyboard navigation.
 document.querySelectorAll('[data-biz-qty-grid]').forEach(grid=>{
   const inputs=[...grid.querySelectorAll('input[type="number"]')];
-  const update=()=>{let total=0;grid.querySelectorAll('.biz-quantity-category').forEach(group=>{const sum=[...group.querySelectorAll('input')].reduce((n,i)=>n+Math.max(0,Number(i.value)||0),0);group.querySelector('[data-biz-total]').textContent=sum.toLocaleString()+'개';total+=sum;});grid.querySelector('[data-biz-grand-total]').textContent=total.toLocaleString()+'개';};
+  const update=()=>{let total=0;grid.querySelectorAll('.biz-quantity-category').forEach(group=>{const sum=[...group.querySelectorAll('[data-biz-qty]')].reduce((n,i)=>n+Math.max(0,Number(i.value)||0),0);group.querySelector('[data-biz-total]').textContent=sum.toLocaleString()+'개';total+=sum;if(group.querySelector('[data-biz-amount]')){let amount=0;group.querySelectorAll('[data-biz-product]').forEach(row=>{const value=Math.round((Number(row.querySelector('[data-biz-unit]').value)||0)*100)*(Number(row.querySelector('[data-biz-qty]').value)||0);amount+=value;row.querySelector('[data-biz-line-amount]').textContent=formatMoney(value);});group.querySelector('[data-biz-amount]').textContent=formatMoney(amount);}});grid.querySelector('[data-biz-grand-total]').textContent=total.toLocaleString()+'개';if(grid.querySelector('[data-biz-grand-amount]')){let amount=0;grid.querySelectorAll('[data-biz-product]:not([hidden])').forEach(row=>amount+=Math.round((Number(row.querySelector('[data-biz-unit]').value)||0)*100)*(Number(row.querySelector('[data-biz-qty]').value)||0));grid.querySelector('[data-biz-grand-amount]').textContent=formatMoney(amount);}};
   grid.addEventListener('input',update);update();
   inputs.forEach((input,index)=>{input.addEventListener('focus',()=>input.select());input.addEventListener('keydown',event=>{let target;if(event.key==='Enter'||event.key==='ArrowDown')target=index+1;else if(event.key==='ArrowUp')target=index-1;else return;event.preventDefault();const direction=target>index?1:-1;while(inputs[target]&&(inputs[target].disabled||!inputs[target].getClientRects().length))target+=direction;inputs[target]?.focus();});});
 });
@@ -190,8 +190,9 @@ const orderPriceData=document.querySelector('#biz-order-prices');
 if(orderPriceData){
  const data=JSON.parse(orderPriceData.textContent),form=orderPriceData.closest('form'),select=form.querySelector('[name="client_id"]'),grid=form.querySelector('[data-biz-qty-grid]');
  const update=()=>{const cid=Number(select.value),allowed=new Set(data.clients[cid]||[]);if(cid===data.original_client)data.original_items.forEach(id=>allowed.add(id));let shown=0;
-  grid.querySelectorAll('[data-biz-product]').forEach(row=>{const show=allowed.has(Number(row.dataset.bizProduct));row.hidden=!show;const input=row.querySelector('input');input.disabled=!show;if(!show)input.value=0;else shown++;});
+  grid.querySelectorAll('[data-biz-product]').forEach(row=>{const show=allowed.has(Number(row.dataset.bizProduct));row.hidden=!show;const input=row.querySelector('input');input.disabled=!show;if(!show){input.value=0;const unit=row.querySelector('[data-biz-unit]');if(unit)unit.value=0;}else shown++;});
   grid.querySelectorAll('.biz-quantity-category').forEach(group=>group.hidden=![...group.querySelectorAll('[data-biz-product]')].some(row=>!row.hidden));
   document.querySelector('#biz-order-products-note').textContent=!cid?'거래처를 먼저 선택해 주세요.':shown?'':'등록된 납품가가 없습니다. 납품가 관리에서 먼저 등록해 주세요.';grid.dispatchEvent(new Event('input',{bubbles:true}));
  };select.addEventListener('change',update);update();
 }
+document.querySelectorAll('[data-biz-check]').forEach(button=>button.addEventListener('click',()=>button.closest('form').querySelectorAll('[name="batches[]"]').forEach(check=>check.checked=button.dataset.bizCheck==='1')));
