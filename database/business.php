@@ -40,3 +40,25 @@ foreach(query('SELECT d.batch_key,MIN(d.client_id) client_id,MIN(d.day) day,MIN(
  query('INSERT INTO biz_orders (batch_key,client_id,order_date,day,order_day,discount_bp,order_discount_bp,items,manual_edited,cancelled,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[$batch['batch_key'],$batch['client_id'],$batch['day'],$batch['day'],$batch['day'],$batch['discount_bp'],$batch['discount_bp'],json_encode($items,JSON_THROW_ON_ERROR),$batch['edited'],$batch['cancelled'],$batch['created_by']]);
 }
 if(!query('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?',['biz_deliveries','unit_cents'])->fetch())db()->exec('ALTER TABLE biz_deliveries ADD COLUMN unit_cents INT NULL');
+
+foreach(['biz_deliveries'=>'amount_cents','biz_sales'=>'gross_cents'] as $table=>$column)if(!query('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?',[$table,$column])->fetch())db()->exec('ALTER TABLE '.$table.' ADD COLUMN '.$column.' INT NULL');
+db()->exec("CREATE TABLE IF NOT EXISTS biz_recipes (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(100) NOT NULL,base_g INT NOT NULL,base_unit VARCHAR(10) NOT NULL DEFAULT 'g',ingredients LONGTEXT NOT NULL,active TINYINT NOT NULL DEFAULT 1) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+db()->exec("CREATE TABLE IF NOT EXISTS biz_recipe_links (product_id INT UNSIGNED PRIMARY KEY,recipe_id INT UNSIGNED NULL,weight_g INT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+db()->exec("CREATE TABLE IF NOT EXISTS biz_production_plans (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,request_key CHAR(32) NOT NULL UNIQUE,plan_date DATE NOT NULL,title VARCHAR(100) NOT NULL,snapshot LONGTEXT NOT NULL,created_by INT UNSIGNED NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+if(!query("SELECT version FROM schema_migrations WHERE version='biz_recipes_20261121'")->fetchColumn()){
+ db()->beginTransaction();try{
+ $recipeIds=[];foreach(query('SELECT * FROM production_recipes WHERE active=1')->fetchAll() as $r){$lines=json_decode($r['ingredients'],true);foreach($lines as &$l)$l['unit']='g';unset($l);query('INSERT INTO biz_recipes (name,base_g,ingredients) VALUES (?,?,?)',[$r['name'],$r['base_g'],json_encode($lines,JSON_UNESCAPED_UNICODE)]);if(!empty($r['seed_key']))$recipeIds[$r['seed_key']]=(int)db()->lastInsertId();}
+ $map=['Sliced Kimchi'=>'mat','Whole Napa Kimchi'=>'pogi','Vegan Kimchi'=>'vegan','Kkakdugi'=>'radish','White Kimchi'=>'white','Geotjeori'=>'fresh','Green Onion Kimchi'=>'green'];
+ foreach(query('SELECT * FROM biz_products')->fetchAll() as $p){$family=$map[$p['en']]??null;if(!$family)foreach($map as $prefix=>$candidate)if(preg_match('/^'.preg_quote($prefix,'/').'(?:$|\s|\()/i',$p['en'])){$family=$candidate;break;}$rid=$family===null?null:($recipeIds[$family]??null);$weight=preg_match('/^([0-9.]+)(kg|g)$/',$p['pack'],$m)?(int)round((float)$m[1]*($m[2]==='kg'?1000:1)):null;
+ query('INSERT INTO biz_recipe_links VALUES (?,?,?)',[$p['id'],$rid,$weight]);}
+ $defs=[
+ 'Beef Kimbap'=>['불고기 김밥',['쌀'=>[1/2.6,'컵'],'당근'=>[78,'g'],'계란'=>[.5,'개'],'단무지'=>[1,'줄'],'오이'=>[1/8,'개'],'소고기 (조리 전)'=>[60,'g']]],
+ 'Tuna Kimbap'=>['참치마요 김밥',['쌀'=>[1/2.6,'컵'],'당근'=>[50,'g'],'계란'=>[.5,'개'],'단무지'=>[1,'줄'],'맛살'=>[1,'줄'],'참치'=>[57*.8,'g'],'마요'=>[57*.2,'g']]],
+ 'Basic Kimbap'=>['일반 김밥',['쌀'=>[1/2.6,'컵'],'당근'=>[78,'g'],'계란'=>[.5,'개'],'단무지'=>[1,'줄'],'오이'=>[1/8,'개'],'우엉'=>[1,'줄'],'소시지'=>[1,'줄'],'맛살'=>[1,'줄']]],
+ 'Veggie Kimbap'=>['베지 김밥',['쌀'=>[1/2.6,'컵'],'당근'=>[78,'g'],'계란'=>[.5,'개'],'단무지'=>[1,'줄'],'오이'=>[1/8,'개'],'우엉'=>[2,'줄']]],
+ 'Crab Triangle Kimbap'=>['크랩 삼각김밥',['쌀'=>[1/3.9,'컵'],'크랩'=>[36*.53,'g'],'크랩마요'=>[36*.47,'g']]],
+ 'Tuna Triangle Kimbap'=>['참치 삼각김밥',['쌀'=>[1/3.9,'컵'],'참치'=>[33*.42,'g'],'마요'=>[33*.44,'g'],'단무지'=>[33*.14,'g']]],
+ 'Beef Triangle Kimbap'=>['불고기 삼각김밥',['쌀'=>[1/3.9,'컵'],'소고기 (조리 전)'=>[33,'g']]]];
+ foreach($defs as $en=>[$name,$amounts]){$lines=[];foreach($amounts as $m=>[$amount,$unit])$lines[]=['material'=>$m,'basis'=>'product','mode'=>'grams','amount'=>$amount,'unit'=>$unit];query("INSERT INTO biz_recipes (name,base_g,base_unit,ingredients) VALUES (?,1,'개',?)",[$name,json_encode($lines,JSON_UNESCAPED_UNICODE)]);$rid=(int)db()->lastInsertId();foreach(query('SELECT id FROM biz_products WHERE en=?',[$en])->fetchAll(PDO::FETCH_COLUMN) as $pid)query('UPDATE biz_recipe_links SET recipe_id=? WHERE product_id=?',[$rid,$pid]);}
+ query("INSERT INTO schema_migrations (version) VALUES ('biz_recipes_20261121')");db()->commit();}catch(Throwable $e){db()->rollBack();throw $e;}
+}

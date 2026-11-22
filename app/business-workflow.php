@@ -31,12 +31,13 @@ function bizShip(int $id,int $qty,?int $discount=null): string {
  if($d['hst_bp']===null)throw new InvalidArgumentException(bizKo($d).'의 HST를 판매상품 관리에서 먼저 지정하세요.');
  query('UPDATE biz_deliveries SET sent=1,delivered=?,version=version+1 WHERE id=?',[$qty,$id]);
  if(bizConsigned((string)$c['code'],$d['category']))return 'biz-results';
- query('INSERT INTO biz_sales (delivery_id,day,qty,cents,discount_bp,request_key) VALUES (?,?,?,?,?,?)',[$id,$d['day'],$qty,$price,$discount??$d['discount_bp'],bin2hex(random_bytes(16))]);
+ query('INSERT INTO biz_sales (delivery_id,day,qty,cents,discount_bp,request_key,gross_cents) VALUES (?,?,?,?,?,?,?)',[$id,$d['day'],$qty,$price,$discount??$d['discount_bp'],bin2hex(random_bytes(16)),$d['amount_cents']]);
  if($c['code']==='PT')return 'biz-invoices';
  if((int)query("SELECT COUNT(*) FROM biz_deliveries d JOIN biz_products p ON p.id=d.product_id WHERE d.batch_key=? AND d.sent=0 AND d.cancelled=0".($c['code']==='OK'?" AND p.category='kimchi'":''),[$d['batch_key']])->fetchColumn())return 'biz-deliveries';
  $invoice=bizIssue((int)$c['id'],$d['day'],$d['day'],'direct',$d['batch_key']);return 'biz-invoice&id='.$invoice.(($c['code']==='HN'||!$c['code'])?'&print=1':'');
 }
 function bizWorkflowAction(string $action): ?string {
+ if(str_starts_with($action,'biz_recipe')||in_array($action,['biz_production_save','biz_recipe_links'],true)){require_once __DIR__.'/business-production.php';return bizProductionAction($action);}
  if(in_array($action,['biz_client','biz_client_delete'],true)){
   $id=positiveInt($_POST['id']??0,0,PHP_INT_MAX);$c=$id?query('SELECT * FROM biz_clients WHERE id=? AND active=1 FOR UPDATE',[$id])->fetch():null;if($id&&!$c)throw new InvalidArgumentException('거래처를 확인하세요.');
   if($action==='biz_client_delete'){if(!$id||bizReferenced('client',$id))throw new InvalidArgumentException('거래내역이 있는 거래처는 삭제할 수 없습니다.');query('UPDATE biz_clients SET active=0,version=version+1 WHERE id=?',[$id]);query('DELETE FROM biz_prices WHERE client_id=?',[$id]);}
@@ -84,6 +85,7 @@ function bizWorkflowAction(string $action): ?string {
   if($action==='biz_document_save'||isset($_POST['qty'])){if(bizBatchSent($key))throw new InvalidArgumentException('이미 납품한 수량은 변경할 수 없습니다.');$items=bizQuantities($_POST['qty']??null);$day=validDate(textfield($_POST,'day',10,true));bizClosed((int)$o['client_id'],$day);$discount=bizRate($_POST['discount']??'0');$notes=textfield($_POST,'notes',2000);$oldItems=array_fill_keys(query('SELECT product_id FROM biz_deliveries WHERE batch_key=? AND cancelled=0',[$key])->fetchAll(PDO::FETCH_COLUMN),true);foreach($items as $pid=>$qty)if(!isset($oldItems[$pid])&&!query('SELECT 1 FROM biz_prices WHERE client_id=? AND product_id=?',[$o['client_id'],$pid])->fetchColumn())throw new InvalidArgumentException('납품가 등록 상품만 추가할 수 있습니다.');
    bizSyncLines($key,(int)$o['client_id'],$day,$discount,$items);
    if(isset($_POST['unit'])){if(!is_array($_POST['unit']))throw new InvalidArgumentException('납품 단가를 확인하세요.');foreach($items as $pid=>$qty)query('UPDATE biz_deliveries SET unit_cents=? WHERE batch_key=? AND product_id=?',[cents($_POST['unit'][$pid]??''),$key,$pid]);}
+   if(isset($_POST['amount'])){if(!is_array($_POST['amount']))throw new InvalidArgumentException('납품 금액을 확인하세요.');foreach($items as $pid=>$qty)query('UPDATE biz_deliveries SET amount_cents=? WHERE batch_key=? AND product_id=?',[cents($_POST['amount'][$pid]??''),$key,$pid]);}
    query('UPDATE biz_orders SET day=?,discount_bp=?,document_notes=?,manual_edited=1,version=version+1 WHERE batch_key=?',[$day,$discount,$notes,$key]);if($action==='biz_document_save')return 'biz-delivery&batch='.$key;}
   $next='biz-deliveries';foreach(query('SELECT id,planned FROM biz_deliveries WHERE batch_key=? AND cancelled=0 AND sent=0 ORDER BY id',[$key])->fetchAll() as $line){$target=bizShip((int)$line['id'],(int)$line['planned']);if(str_starts_with($target,'biz-invoice&'))$next=$target;}
   query('UPDATE biz_orders SET version=version+1 WHERE batch_key=?',[$key]);return $next;

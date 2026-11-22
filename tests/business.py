@@ -143,6 +143,34 @@ try:
  check('href="/?page=biz-production"' not in sidebar and 'href="/?page=biz-results"' not in sidebar and '납품서별 수금' in sidebar and '위탁판매 정산·수금' in sidebar,'업무 메뉴 정리와 수금 메뉴 추가')
  simulation=req('/?page=biz-production&calculate=simulate&qty['+str(kimchi)+']=7')[1]
  check('생산 계획' in simulation and '>7</td>' in simulation,'생산 시뮬레이션 수량 계산')
+ # Whole-line money must survive a non-divisible quantity without cent loss.
+ exact=uuid.uuid4().hex
+ check(post({'action':'biz_order_save','batch_key':'','request_key':exact,'client_id':person,'day':'2026-12-10','qty['+str(kimchi)+']':3})[0]==200,'전체 금액 시험 주문')
+ check(post({'action':'biz_document_confirm','batch_key':exact,'version':1,'day':'2026-12-10','discount':'0','qty['+str(kimchi)+']':3,'amount['+str(kimchi)+']':'10.00'})[0]==200,'3개 전체 금액 $10 납품 확정')
+ exact_id=int(app('echo query("SELECT MAX(id) FROM biz_invoices")->fetchColumn();'))
+ check(app('echo query("SELECT total_cents FROM biz_invoices WHERE id=?",['+str(exact_id)+'])->fetchColumn();').strip()=='1000','나누어떨어지지 않는 금액 센트 보존')
+ # Consigned partial sales must allocate the whole line amount without losing a cent.
+ consigned=uuid.uuid4().hex;rice=ids['products']['Crab Rice Ball']
+ check(post({'action':'biz_order_save','batch_key':'','request_key':consigned,'client_id':ids['clients']['OK'],'day':'2026-12-07','qty['+str(rice)+']':3})[0]==200,'위탁 전체금액 시험 주문')
+ check(post({'action':'biz_document_confirm','batch_key':consigned,'version':1,'day':'2026-12-07','discount':'0','qty['+str(rice)+']':3,'amount['+str(rice)+']':'10.00'})[0]==200,'위탁 전체 금액 납품')
+ consigned_id=int(app('echo query("SELECT id FROM biz_deliveries WHERE batch_key=?",["'+consigned+'"]).fetchColumn();'.replace(']).fetchColumn()','])->fetchColumn()')))
+ for sold in [1,2]:check(post({'action':'biz_result','id':consigned_id,'day':'2026-12-07','sold':sold,'returned':0,'request_key':uuid.uuid4().hex})[0]==200,'위탁 실판매 부분 수량 기록')
+ check(app('echo query("SELECT SUM(gross_cents) FROM biz_sales WHERE delivery_id=?",['+str(consigned_id)+'])->fetchColumn();').strip()=='1000','위탁 실판매 1개·2개 합산도 전체금액 $10 보존')
+ check(post({'action':'biz_settle','client_id':ids['clients']['OK'],'start':'2026-12-07','end':'2026-12-13'})[0]==200 and app('echo query("SELECT total_cents FROM biz_invoices ORDER BY id DESC LIMIT 1")->fetchColumn();').strip()=='904','위탁 전체금액에서 20% 차감 후 HST 계산')
+ # Save a plan and retain its original ingredients even after recipe changes.
+ plan_key=uuid.uuid4().hex
+ status,h,url=post({'action':'biz_production_save','request_key':plan_key,'plan_date':'2026-12-09','title':'시험 생산 계획','batches[]':pendingbatch})
+ check(status==200 and 'biz-production&id=' in url,'생산 날짜·계획 이름·선택 주문 저장')
+ plan_id=int(app('echo query("SELECT MAX(id) FROM biz_production_plans")->fetchColumn();'))
+ saved_snapshot=app('echo query("SELECT snapshot FROM biz_production_plans WHERE id=?",['+str(plan_id)+'])->fetchColumn();')
+ check(post({'action':'biz_production_save','request_key':plan_key,'plan_date':'2026-12-09','title':'시험 생산 계획','batches[]':pendingbatch})[0]==200 and app('echo query("SELECT COUNT(*) FROM biz_production_plans")->fetchColumn();').strip()=='1','생산 계획 중복 저장 방지')
+ recipe={'action':'biz_recipe_save','id':0,'name':'시험 배합','base_g':1000,'base_unit':'g','material[0]':'배추','basis[0]':'product','mode[0]':'percent','amount[0]':'80','unit[0]':'g'}
+ check(post(recipe)[0]==200,'판매 관리 전용 배합 추가')
+ rid=int(app('echo query("SELECT MAX(id) FROM biz_recipes")->fetchColumn();'))
+ check(post(dict(recipe,id=rid,**{'amount[0]':'90'}))[0]==200,'배합 수정')
+ check(post({'action':'biz_recipe_links','recipe['+str(kimchi)+']':rid,'weight['+str(kimchi)+']':850})[0]==200,'상품별 배합과 생산 무게 연결')
+ check(app('echo query("SELECT snapshot FROM biz_production_plans WHERE id=?",['+str(plan_id)+'])->fetchColumn();')==saved_snapshot,'배합 변경 후 저장한 생산 계획 보존')
+ check(post({'action':'biz_recipe_delete','id':rid})[0]==200,'배합 삭제')
  for page in ['biz-order','biz-prices','biz-order&batch='+batch,'biz-delivery&batch='+batch,'biz-document-print&batch='+batch,'expense-edit','orders','customers','expense-report']:
   status,h,_=req('/?page='+page);check(status==200 and '화면을 불러오지 못했습니다' not in h and 'class="today"' not in h,'새 화면·제목 날짜 제거 '+page)
  for page in ['biz','biz-plan','biz-production','biz-deliveries','biz-results','biz-invoices','biz-products','biz-clients','biz-invoice&id=1']:
