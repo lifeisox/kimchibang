@@ -88,7 +88,7 @@ function bizWorkflowAction(string $action): ?string {
    if(isset($_POST['amount'])){if(!is_array($_POST['amount']))throw new InvalidArgumentException('납품 금액을 확인하세요.');foreach($items as $pid=>$qty)query('UPDATE biz_deliveries SET amount_cents=? WHERE batch_key=? AND product_id=?',[cents($_POST['amount'][$pid]??''),$key,$pid]);}
    query('UPDATE biz_orders SET day=?,discount_bp=?,document_notes=?,manual_edited=1,version=version+1 WHERE batch_key=?',[$day,$discount,$notes,$key]);if($action==='biz_document_save')return 'biz-delivery&batch='.$key;}
   $next='biz-deliveries';foreach(query('SELECT id,planned FROM biz_deliveries WHERE batch_key=? AND cancelled=0 AND sent=0 ORDER BY id',[$key])->fetchAll() as $line){$target=bizShip((int)$line['id'],(int)$line['planned']);if(str_starts_with($target,'biz-invoice&'))$next=$target;}
-  query('UPDATE biz_orders SET version=version+1 WHERE batch_key=?',[$key]);return $next;
+  query('UPDATE biz_orders SET version=version+1 WHERE batch_key=?',[$key]);return 'biz-deliveries';
  }
  return null;
 }

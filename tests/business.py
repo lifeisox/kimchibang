@@ -128,13 +128,15 @@ try:
  check(newbatch in req('/?page=biz-deliveries&day=2026-12-06')[1] and newbatch not in req('/?page=biz-deliveries&day=2026-12-04')[1],'미납품 목록에 기준일 이전 포함·이후 제외')
  check(post({'action':'biz_document_save','batch_key':newbatch,'version':1,'day':'2026-12-05','discount':'0','qty['+str(kimchi)+']':2,'unit['+str(kimchi)+']':'7.25'})[0]==200,'납품서 개별 단가 수정')
  check('$14.50' in req('/?page=biz-document-print&batch='+newbatch)[1],'납품서 미리보기에 수정 단가 반영')
- check(post({'action':'biz_document_confirm','batch_key':newbatch,'version':2})[0]==200,'수정 단가로 납품 확정')
+ check(post({'action':'biz_document_confirm','batch_key':newbatch,'version':2})[2].endswith('page=biz-deliveries'),'납품 확정 후 목록으로 복귀')
  invoice_id=int(app('echo query("SELECT MAX(id) FROM biz_invoices")->fetchColumn();'))
  check(app('echo query("SELECT total_cents FROM biz_invoices WHERE id=?",['+str(invoice_id)+'])->fetchColumn();').strip()=='1450','납품 단가가 실제 인보이스에 반영')
  check(newbatch not in req('/?page=biz-deliveries&day=2026-12-06')[1] and newbatch in req('/?page=biz-deliveries&day=2026-12-05&scope=all')[1],'납품 완료 목록 제외·전체 보기 해당일 포함')
  check('RN'+str(invoice_id) in req('/?page=biz-collections')[1],'납품서별 미수금 목록')
  check(post({'action':'biz_payment','id':invoice_id,'amount':'4.50','day':'2026-12-05','method':'cash','return_to':'collections','request_key':uuid.uuid4().hex})[2].endswith('biz-collections'),'목록에서 부분 입금 처리 후 복귀')
  check(post({'action':'biz_payment','id':invoice_id,'amount':'10.00','day':'2026-12-05','method':'etransfer','return_to':'collections','request_key':uuid.uuid4().hex})[0]==200 and ('RN'+str(invoice_id)+'</a>') not in req('/?page=biz-collections')[1],'잔액 수금 후 목록에서 제외')
+ history=req('/?page=biz-collections')[1]
+ check('최근 입금 내역' in history and '$4.50' in history and '$10.00' in history and '× 2' in history,'최근 입금·제품별 수량·금액 목록')
  pendingbatch=uuid.uuid4().hex
  check(post({'action':'biz_order_save','batch_key':'','request_key':pendingbatch,'client_id':person,'day':'2026-12-09','qty['+str(kimchi)+']':3})[0]==200,'생산 대상 미납품 주문 생성')
  production=req('/?page=biz-production&day=2026-12-09&batches[]='+pendingbatch+'&calculate=orders')[1]

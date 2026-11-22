@@ -1,6 +1,6 @@
-# Hostinger 판매·기장 통합 업데이트
+# Hostinger 김치방·기장 업데이트 (판매 관리 제외)
 
-이 배포판은 `k.ottawakfood.com`의 기존 판매 기능에 기장 기능을 추가합니다. 공개 폴더 `public_html/kimchibang`과 비공개 앱 `kimchibang`을 구분합니다. 계정·비밀번호·고객 DB·엑셀·영수증은 ZIP에 포함하지 않습니다. 기장용 테이블을 추가하고 기존 가격·로고·고객·주문·입금·기장 자료를 보존합니다. `config/release.php`가 기장 기능을 활성화하므로 DB 비밀번호나 local.php를 수정할 필요가 없습니다.
+이 배포판은 `k.ottawakfood.com`의 김치방·기장 기능을 업데이트합니다. 개발 중인 새 판매 관리(biz_) 코드와 제품 자료는 포함하지 않으며, 운영 환경에서는 해당 메뉴·주소·저장 요청을 차단합니다. 공개 폴더 `public_html/kimchibang`과 비공개 앱 `kimchibang`을 구분합니다. 계정·비밀번호·고객 DB·엑셀·영수증은 ZIP에 포함하지 않습니다. 기장용 테이블을 추가하고 기존 가격·로고·고객·주문·입금·기장 자료를 보존합니다. `config/release.php`가 기장 기능을 활성화하므로 DB 비밀번호나 local.php를 수정할 필요가 없습니다.
 
 ## 기존 운영 서버 업데이트
 
@@ -34,3 +34,11 @@ Codespaces의 시험 거래·시험 영수증·시험 계정은 자동으로 운
 ## 재생성
 
 기장 개발 Codespace에서 `php scripts/package-hostinger.php --bookkeeping`을 실행하면 `dist/kimchibang-bookkeeping-hostinger.zip`을 만듭니다. Python이 있는 환경에서는 `python scripts/package-hostinger.py --bookkeeping`도 같습니다. 옵션을 빼면 기존 판매 전용 ZIP을 만듭니다.
+
+## 2026-11-22 배포판
+
+영수증에서 Account를 바꾸어 저장하면 구매처별 기본 Account로 기억하고 다음 새 영수증의 자동 읽기 결과 적용 시 반영합니다. 새 거래에서 확인한 Account도 기억하며, 과거 거래의 단순 사용 빈도보다 우선합니다. 이미 사용자가 고친 현재 입력값이나 기존 거래의 Account는 자동 덮어쓰지 않습니다. 기억한 Account가 비활성화되면 활성 Account에서 다시 선택합니다. 수정 이력은 기존 비용 변경 기록에 함께 남습니다.
+
+필요한 `bookkeeping_supplier_accounts` 테이블은 위 업데이트 명령에서 자동으로 추가합니다. DB·엑셀을 다시 만들거나 가져올 필요는 없습니다. 새 판매 관리의 납품·수금 변경은 이 ZIP에 포함되지 않습니다.
+
+Codespaces에서 ZIP을 내려받으려면 최신 코드를 받은 후 `php scripts/package-hostinger.php --bookkeeping`을 실행하고 왼쪽 Explorer에서 `dist/kimchibang-bookkeeping-hostinger.zip`을 오른쪽 클릭 → Download를 선택합니다. 그 파일을 위의 비공개 도메인 폴더로 업로드하세요.

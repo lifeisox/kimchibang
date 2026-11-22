@@ -44,6 +44,15 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  report=json.loads(app('require "app/expenses.php";echo json_encode(expenseReport(2026)["totals"]);'));check(report['paid']==11300 and report['itc']==650 and report['operating']==5000,'사업분50%·확인된 HST만 공제·운영비 집계')
  wrong=dict(data,request_key=uuid.uuid4().hex,total='114');check(req('/?page=expense-edit',wrong)[0]==422,'공급가·세금·합계 불일치 저장 차단')
  check(req('/?page=expense-edit',dict(data,csrf='bad'))[0]==422,'비용 CSRF 보호')
+ # An explicit Account change beats a larger historical count on later receipts.
+ pref_supplier=app('echo query("SELECT supplier_id FROM expenses WHERE id=?",['+str(eid)+'])->fetchColumn();').strip()
+ check(app('require "app/bookkeeping.php";echo supplierAccount('+pref_supplier+');').strip()==category,'새 거래에서 확인한 구매처 Account 기억')
+ alt=app('echo query("SELECT id FROM expense_categories WHERE name=?",["Material"])->fetchColumn();').strip()
+ changed=dict(data,id=eid,version=1,category_id=alt)
+ check(req('/?page=expense-edit',changed)[0]==200 and app('require "app/bookkeeping.php";echo supplierAccount('+pref_supplier+');').strip()==alt,'거래 수정 Account를 구매처 기본값으로 저장')
+ # Restore fixture categorization and version for the subsequent original tests.
+ check(req('/?page=expense-edit',dict(data,id=eid,version=2))[0]==200,'Account 재수정 기억')
+ app('query("UPDATE expenses SET version=1 WHERE id=?",['+str(eid)+']);')
  # Supplier aliases, management and account defaults are checked through the same authenticated routes.
  print(app("""require 'app/bookkeeping.php';db()->beginTransaction();$a=supplierResolve('Costco Business Center');$b=supplierResolve('Costco Merivale');$c=supplierResolve('Costco Strandherd');if($a['id']!==$b['id']||$a['id']!==$c['id'])throw new RuntimeException('Costco normalization');db()->commit();echo 'PASS Costco 3개 지점 동일 구매처 연결';"""))
  status,html,_=req('/?page=bookkeeping-suppliers',{'action':'supplier_save','csrf':csrf,'id':0,'name':'Fixture Supplier','aliases':'Fixture Branch'})
@@ -88,7 +97,7 @@ check(salesGrowth(20000,10000)==='100.0%'&&salesGrowth(1,0)==='—','증감률·
  _,html,_=req('/?page=expense-edit&id='+str(eid));version=app('echo query("SELECT version FROM expenses WHERE id=1")->fetchColumn();').strip()
  status,html,_=req('/?page=expense-edit&id='+str(eid),{'action':'expense_void','csrf':token(html),'id':str(eid),'version':version,'reason':'fixture 취소'})
  check(status==200 and '취소된 비용' in html,'비용 취소·감사기록 보존')
- check(app('echo query("SELECT COUNT(*) FROM expense_events WHERE expense_id=1")->fetchColumn();').strip()=='4','생성·수정·규칙 초기화·취소 이력 보존')
+ check(app('echo query("SELECT COUNT(*) FROM expense_events WHERE expense_id=1")->fetchColumn();').strip()=='6','생성·Account 수정·규칙 초기화·취소 이력 보존')
 finally:
  if container:subprocess.run(['docker','rm','-f',container],cwd=ROOT,capture_output=True)
  admin('DROP DATABASE IF EXISTS '+name+'; REVOKE ALL ON '+name+".* FROM 'kimchi'@'%';")

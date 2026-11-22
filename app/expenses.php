@@ -46,9 +46,14 @@ function expenseAction(): never {
    if($id&&$splitCount===1)query('UPDATE expense_splits SET category_id=?,net_cents=? WHERE expense_id=?',[$category,$subtotal,$id]);
    $keepArchived=$before&&$selectedSupplier>0&&$selectedSupplier===(int)$before['supplier_id']&&$vendor===$before['vendor']&&(int)query('SELECT active FROM bookkeeping_suppliers WHERE id=?',[$selectedSupplier])->fetchColumn()===0;$supplier=$keepArchived?['id'=>$selectedSupplier,'display'=>$vendor]:supplierResolve($vendor,$selectedSupplier);query('UPDATE expenses SET supplier_id=?,vendor=?,itc_limit_pct=? WHERE id=?',[$supplier['id'],$supplier['display'],$itcLimit,$id]);
    $attachment=expenseFile($_FILES['receipt']??[]);if($attachment)query('INSERT INTO expense_receipts (expense_id,storage_key,mime,original_name,sha256) VALUES (?,?,?,?,?)',[$id,...array_values($attachment)]);
+   $accountLearning=null;
+   if($splitCount<=1&&$account['active']&&(!$before||(int)$before['category_id']!==$category||(int)$before['supplier_id']!==(int)$supplier['id'])){
+    $previous=query('SELECT * FROM bookkeeping_supplier_accounts WHERE supplier_id=?',[$supplier['id']])->fetch();
+    query('INSERT INTO bookkeeping_supplier_accounts (supplier_id,category_id,source_expense_id,updated_by) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE category_id=VALUES(category_id),source_expense_id=VALUES(source_expense_id),updated_by=VALUES(updated_by)',[$supplier['id'],$category,$id,$_SESSION['user_id']]);$accountLearning=['before'=>$previous,'category_id'=>$category];
+   }
    $learned=saveReceiptLearning($supplier['id'],$id,$ocr,$total,$hst);
    $logo=saveReceiptLogo($supplier['id'],$id);
-   $detail=['logo_learning'=>$logo,'learning'=>$learned,'action'=>$before?'edit':'create','before'=>$before,'after'=>query('SELECT * FROM expenses WHERE id=?',[$id])->fetch(),'receipt'=>$attachment];
+   $detail=['account_learning'=>$accountLearning,'logo_learning'=>$logo,'learning'=>$learned,'action'=>$before?'edit':'create','before'=>$before,'after'=>query('SELECT * FROM expenses WHERE id=?',[$id])->fetch(),'receipt'=>$attachment];
   }
   query('INSERT INTO expense_events (expense_id,actor_id,detail) VALUES (?,?,?)',[$id,$_SESSION['user_id'],json_encode($detail,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);db()->commit();
  } catch(Throwable $e){if(db()->inTransaction())db()->rollBack();if($attachment){$f=expenseReceiptDirectory().'/'.$attachment['storage_key'];if(is_file($f))unlink($f);}throw $e;}
